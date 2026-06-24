@@ -295,8 +295,8 @@ function GlobalStyle() {
         .pd-header-start { gap: 0; flex: none; min-width: 0; }
         .pd-logo { display: none !important; }
         .pd-panel-btn { display: flex !important; }
-        .pd-header-spacer { display: none; }
-        .pd-header-actions { flex: none; gap: 6px; }
+        .pd-header-spacer { display: block; flex: 1; min-width: 8px; }
+        .pd-header-actions { flex: none; gap: 6px; margin-left: auto; }
         .pd-header-cta { padding: 8px 10px !important; min-width: 36px; justify-content: center; }
         .pd-segmented button { padding: 5px 9px !important; font-size: 11px !important; }
         .pd-cta-label { display: none; }
