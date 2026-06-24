@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, Check, ChevronRight, ChevronDown, Mic, ShieldAlert,
-  ShieldCheck, Lock, BookText, Eraser, Sparkles,
+  ShieldCheck, Lock, BookText, Eraser, Sparkles, Menu, X,
 } from "lucide-react";
 
 const c = {
@@ -169,8 +169,10 @@ export default function App() {
         <div className="pd-header-start" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           <img className="pd-logo" src="/logo.svg" alt="Transcript" style={{ height: 22, width: "auto", display: "block", flexShrink: 0 }} />
           <button type="button" className="pd-btn pd-panel-btn" onClick={() => setSidebarOpen(o => !o)}
-            style={{ alignItems: "center", gap: 6, background: sidebarOpen ? c.peridotTint : c.sunken, color: c.ink, border: `1px solid ${sidebarOpen ? c.peridot + "55" : c.line}`, borderRadius: 8, padding: "7px 11px", fontFamily: F.ui, fontWeight: 600, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>
-            {sidebarOpen ? "Transcript" : "Details"}
+            aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+            title={sidebarOpen ? "Close menu" : "Open menu"}
+            style={{ alignItems: "center", justifyContent: "center", background: sidebarOpen ? c.peridotTint : c.surface, color: c.ink, border: `1px solid ${sidebarOpen ? c.peridot + "55" : c.line}`, borderRadius: 9, width: 36, height: 36, padding: 0, cursor: "pointer", flexShrink: 0 }}>
+            {sidebarOpen ? <X size={18} strokeWidth={2.25} /> : <Menu size={18} strokeWidth={2.25} />}
           </button>
         </div>
         <div className="pd-header-spacer" style={{ flex: 1 }} />
@@ -290,9 +292,9 @@ function GlobalStyle() {
       @container pd (max-width: 768px) {
         .pd-app { height: 100dvh; min-height: 100dvh; }
         .pd-header { padding: 10px 12px; gap: 8px; height: auto; min-height: 50px; flex-wrap: nowrap; }
-        .pd-header-start { gap: 8px; flex: 1; min-width: 0; }
-        .pd-logo { height: 17px !important; }
-        .pd-panel-btn { display: flex !important; padding: 6px 10px !important; font-size: 12px !important; }
+        .pd-header-start { gap: 0; flex: none; min-width: 0; }
+        .pd-logo { display: none !important; }
+        .pd-panel-btn { display: flex !important; }
         .pd-header-spacer { display: none; }
         .pd-header-actions { flex: none; gap: 6px; }
         .pd-header-cta { padding: 8px 10px !important; min-width: 36px; justify-content: center; }
