@@ -113,13 +113,20 @@ export default function App() {
   const [pop, setPop] = useState(null);
   const [sent, setSent] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
+  const appRef = useRef(null);
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
-    const onChange = (e) => { setMobile(e.matches); if (!e.matches) setSidebarOpen(false); };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    const el = appRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      const isCompact = w < 768;
+      setCompact(isCompact);
+      if (!isCompact) setSidebarOpen(false);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const [playing, setPlaying] = useState(false);
@@ -155,19 +162,19 @@ export default function App() {
   const setAllFill = (val) => setFillers(Object.fromEntries(Object.keys(fillers).map(k => [k, val])));
 
   return (
-    <div className="pd-app" style={{ fontFamily: F.ui, background: c.bg, color: c.ink, height: "100vh", minHeight: 640, display: "flex", flexDirection: "column", WebkitFontSmoothing: "antialiased" }}>
+    <div ref={appRef} className={`pd-app${compact ? " pd-compact" : ""}`} style={{ fontFamily: F.ui, background: c.bg, color: c.ink, height: "100vh", minHeight: 640, display: "flex", flexDirection: "column", WebkitFontSmoothing: "antialiased" }}>
       <GlobalStyle />
 
       <header className="pd-header" style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 22px", height: 58, borderBottom: `1px solid ${c.line}`, background: c.surface, flexShrink: 0 }}>
-        <img className="pd-logo" src="/logo.svg" alt="Transcript" style={{ height: 22, width: "auto", display: "block" }} />
-        {mobile && (
+        <div className="pd-header-start" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <img className="pd-logo" src="/logo.svg" alt="Transcript" style={{ height: 22, width: "auto", display: "block", flexShrink: 0 }} />
           <button type="button" className="pd-btn pd-panel-btn" onClick={() => setSidebarOpen(o => !o)}
-            style={{ display: "none", alignItems: "center", gap: 6, background: sidebarOpen ? c.peridotTint : c.sunken, color: c.ink, border: `1px solid ${sidebarOpen ? c.peridot + "55" : c.line}`, borderRadius: 8, padding: "7px 11px", fontFamily: F.ui, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
+            style={{ alignItems: "center", gap: 6, background: sidebarOpen ? c.peridotTint : c.sunken, color: c.ink, border: `1px solid ${sidebarOpen ? c.peridot + "55" : c.line}`, borderRadius: 8, padding: "7px 11px", fontFamily: F.ui, fontWeight: 600, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>
             {sidebarOpen ? "Transcript" : "Details"}
           </button>
-        )}
+        </div>
         <div className="pd-header-spacer" style={{ flex: 1 }} />
-        <div className="pd-header-actions" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="pd-header-actions" style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <Segmented value={view} onChange={setView} options={[["cleaned", "Cleaned"], ["original", "Original"]]} />
           <button className="pd-btn pd-header-cta" onClick={() => setSent(true)}
             style={{ display: "flex", alignItems: "center", gap: 7, background: c.peridot, color: "#fff", border: "none", borderRadius: 9, padding: "9px 15px", fontFamily: F.ui, fontWeight: 600, fontSize: 13.5, cursor: "pointer", boxShadow: `0 1px 2px ${c.peridotDeep}55` }}
@@ -179,8 +186,8 @@ export default function App() {
       </header>
 
       <div className="pd-body" style={{ flex: 1, minHeight: 0, display: "flex" }}>
-        {mobile && sidebarOpen && <div className="pd-sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
-        <aside className={`pd-scroll pd-sidebar${mobile && sidebarOpen ? " pd-sidebar-open" : ""}`} style={{ width: 296, flexShrink: 0, borderRight: `1px solid ${c.line}`, background: c.surface, overflowY: "auto", padding: "20px 18px" }}>
+        {compact && sidebarOpen && <div className="pd-sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+        <aside className={`pd-scroll pd-sidebar${compact && sidebarOpen ? " pd-sidebar-open" : ""}`} style={{ width: 296, flexShrink: 0, borderRight: `1px solid ${c.line}`, background: c.surface, overflowY: "auto", padding: "20px 18px" }}>
           <RailHead icon={<Mic size={13} />}>Speakers</RailHead>
           <div style={{ marginBottom: 26 }}>
             {Object.entries(speakers).map(([id, sp]) => (
@@ -216,15 +223,19 @@ export default function App() {
           </div>
         </aside>
 
-        <main className="pd-scroll pd-main" style={{ flex: 1, overflowY: "auto", padding: "30px 0 40px" }} onClick={() => { closePop(); if (mobile) setSidebarOpen(false); }}>
+        <main className="pd-scroll pd-main" style={{ flex: 1, overflowY: "auto", padding: "30px 0 40px" }} onClick={() => { closePop(); if (compact) setSidebarOpen(false); }}>
           <div className="pd-main-inner" style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px" }}>
             <div className="pd-doc-head" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 22, paddingBottom: 18, borderBottom: `1px solid ${c.line}` }}>
-              <div>
-                <h1 className="pd-title" style={{ fontFamily: F.read, fontSize: 25, fontWeight: 500, margin: 0, letterSpacing: -0.3 }}>Clearwater · fintech onboarding research</h1>
-                <p className="pd-subtitle" style={{ fontSize: 12.5, color: c.muted, margin: "5px 0 0", fontFamily: F.mono }}>recorded today · {fmt(DURATION)} · auto-transcribed</p>
+              <div className="pd-doc-meta" style={{ minWidth: 0, flex: 1 }}>
+                <h1 className="pd-title" style={{ fontFamily: F.read, fontSize: 25, fontWeight: 500, margin: 0, letterSpacing: -0.3 }}>
+                  <span className="pd-title-line">Clearwater</span>
+                  <span className="pd-title-line pd-title-line-sub">fintech onboarding research</span>
+                </h1>
+                <p className="pd-subtitle" style={{ fontSize: 12.5, color: c.muted, margin: "8px 0 0", fontFamily: F.mono }}>recorded today · {fmt(DURATION)} · auto-transcribed</p>
               </div>
               <span className="pd-badge" style={{ fontSize: 11.5, color: view === "original" ? c.inkSoft : c.peridot, fontWeight: 600, background: view === "original" ? c.sunken : c.peridotTint, padding: "4px 10px", borderRadius: 99, flexShrink: 0 }}>
-                {view === "original" ? "Original — raw transcript" : "Cleaned copy"}
+                <span className="pd-badge-long">{view === "original" ? "Original — raw transcript" : "Cleaned copy"}</span>
+                <span className="pd-badge-short">{view === "original" ? "Original" : "Cleaned"}</span>
               </span>
             </div>
 
@@ -241,7 +252,7 @@ export default function App() {
       </div>
 
       <AudioBar playing={playing} toggle={toggle} t={t} onScrub={setT} />
-      <SourceVideo playing={playing} t={t} toggle={toggle} name={speakers.S2.label} />
+      <SourceVideo playing={playing} t={t} toggle={toggle} name={speakers.S2.label} compact={compact} />
 
       {pop && (
         <Popover pop={pop} onClose={closePop}
@@ -258,6 +269,11 @@ function GlobalStyle() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesque:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
+      .pd-app { container-type: inline-size; container-name: pd; }
+      .pd-panel-btn { display: none; }
+      .pd-compact .pd-panel-btn { display: flex !important; }
+      .pd-badge-short { display: none; }
+      .pd-title-line { display: inline; }
       ::selection { background: ${c.peridotTint}; }
       .pd-seg { cursor: pointer; border-radius: 4px; transition: background .12s ease, opacity .18s ease, color .15s ease; }
       .pd-btn { transition: background .14s ease, border-color .14s ease, transform .04s ease; }
@@ -271,20 +287,22 @@ function GlobalStyle() {
       input.pd-input { font-family: ${F.ui}; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-      @media (max-width: 768px) {
+      @container pd (max-width: 768px) {
         .pd-app { height: 100dvh; min-height: 100dvh; }
-        .pd-header { padding: 10px 14px; gap: 10px; height: auto; min-height: 52px; flex-wrap: wrap; }
-        .pd-logo { height: 18px !important; }
-        .pd-panel-btn { display: flex !important; }
+        .pd-header { padding: 10px 12px; gap: 8px; height: auto; min-height: 50px; flex-wrap: nowrap; }
+        .pd-header-start { gap: 8px; flex: 1; min-width: 0; }
+        .pd-logo { height: 17px !important; }
+        .pd-panel-btn { display: flex !important; padding: 6px 10px !important; font-size: 12px !important; }
         .pd-header-spacer { display: none; }
-        .pd-header-actions { flex: 1; justify-content: flex-end; gap: 8px; min-width: 0; }
-        .pd-segmented button { padding: 5px 10px !important; font-size: 11.5px !important; }
+        .pd-header-actions { flex: none; gap: 6px; }
+        .pd-header-cta { padding: 8px 10px !important; min-width: 36px; justify-content: center; }
+        .pd-segmented button { padding: 5px 9px !important; font-size: 11px !important; }
         .pd-cta-label { display: none; }
         .pd-seg { -webkit-tap-highlight-color: transparent; }
         .pd-body { flex-direction: column; position: relative; }
         .pd-sidebar {
           position: fixed; top: 0; left: 0; bottom: 0; z-index: 35;
-          width: min(320px, 88vw) !important; max-width: 88vw;
+          width: min(320px, 88cqw) !important; max-width: 88cqw;
           transform: translateX(-105%); transition: transform .22s ease;
           box-shadow: none; border-right: 1px solid ${c.lineStrong};
         }
@@ -294,31 +312,43 @@ function GlobalStyle() {
           animation: pdFade .18s ease both;
         }
         @keyframes pdFade { from { opacity: 0 } to { opacity: 1 } }
-        .pd-main { padding: 20px 0 32px !important; flex: 1; min-height: 0; }
-        .pd-main-inner { padding: 0 16px !important; }
-        .pd-doc-head { flex-direction: column; align-items: flex-start !important; gap: 10px; }
-        .pd-title { font-size: 20px !important; line-height: 1.25; }
-        .pd-subtitle { font-size: 11px !important; }
-        .pd-turn { gap: 12px !important; padding: 10px 8px !important; }
+        .pd-main { padding: 16px 0 28px !important; flex: 1; min-height: 0; }
+        .pd-main-inner { padding: 0 14px !important; }
+        .pd-doc-head { flex-direction: column; align-items: stretch !important; gap: 12px; margin-bottom: 18px !important; padding-bottom: 14px !important; }
+        .pd-doc-meta { width: 100%; }
+        .pd-title { font-size: 18px !important; line-height: 1.3 !important; display: flex; flex-direction: column; gap: 3px; }
+        .pd-title-line { display: block; }
+        .pd-title-line-sub { font-size: 15px !important; font-weight: 400 !important; color: ${c.inkSoft}; letter-spacing: 0 !important; }
+        .pd-subtitle { font-size: 10.5px !important; margin-top: 6px !important; line-height: 1.45; }
+        .pd-badge { align-self: flex-start; font-size: 10.5px !important; padding: 3px 9px !important; }
+        .pd-badge-long { display: none; }
+        .pd-badge-short { display: inline; }
+        .pd-turn { gap: 10px !important; padding: 10px 6px !important; }
         .pd-turn-text { font-size: 16px !important; line-height: 1.58 !important; }
-        .pd-turn-time { width: 44px !important; }
-        .pd-audio { height: auto !important; min-height: 72px; padding: 12px 14px !important; gap: 12px !important; }
+        .pd-turn-time { width: 40px !important; }
+        .pd-audio { height: auto !important; min-height: 72px; padding: 12px 12px !important; gap: 10px !important; }
         .pd-audio-caption { display: none !important; }
         .pd-audio-times { font-size: 10px !important; }
         .pd-video-panel {
-          right: 12px !important; bottom: 82px !important;
-          width: min(280px, calc(100vw - 24px)) !important;
+          right: 10px !important; bottom: 78px !important;
+          width: min(280px, calc(100cqw - 20px)) !important;
         }
         .pd-video-collapsed {
-          right: 12px !important; bottom: 82px !important;
-          font-size: 11px !important; padding: 7px 12px 7px 8px !important;
+          right: 10px !important; bottom: 78px !important;
+          font-size: 11px !important; padding: 7px 10px 7px 7px !important;
         }
         .pd-video-collapsed-label { display: none; }
-        .pd-popover { width: min(280px, calc(100vw - 28px)) !important; max-width: calc(100vw - 28px); }
-        .pd-sent-card { width: min(380px, calc(100vw - 32px)) !important; padding: 22px 18px !important; }
+        .pd-popover { width: min(280px, calc(100cqw - 28px)) !important; max-width: calc(100cqw - 28px); }
+        .pd-sent-card { width: min(380px, calc(100cqw - 32px)) !important; padding: 22px 18px !important; }
         .pd-sent-stats { gap: 6px !important; }
         .pd-sent-stat { padding: 10px 4px !important; }
       }
+
+      .pd-title-line-sub::before { content: " · "; }
+      @container pd (max-width: 768px) {
+        .pd-title-line-sub::before { content: none; }
+      }
+
     `}</style>
   );
 }
@@ -401,7 +431,9 @@ function Popover({ pop, onClose, fillers, pii, terms, dict, setFillers, setPii, 
   const ref = useRef(null);
   const [pos, setPos] = useState({ left: 0, top: 0, ready: false });
   useEffect(() => {
-    const W = Math.min(280, window.innerWidth - 28), r = pop.rect;
+    const root = document.querySelector(".pd-app");
+    const maxW = root ? root.getBoundingClientRect().width - 28 : window.innerWidth - 28;
+    const W = Math.min(280, maxW), r = pop.rect;
     let left = Math.max(14, Math.min(r.left + r.width / 2 - W / 2, window.innerWidth - W - 14));
     let top = r.bottom + 8;
     const h = ref.current?.offsetHeight ?? 150;
@@ -546,8 +578,9 @@ function DictRow({ d, on, toggle }) {
   );
 }
 
-function SourceVideo({ playing, t, toggle, name }) {
-  const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
+function SourceVideo({ playing, t, toggle, name, compact }) {
+  const [collapsed, setCollapsed] = useState(compact);
+  useEffect(() => { if (compact) setCollapsed(true); }, [compact]);
   const [mode, setMode] = useState("source");
   const share = mode === "shareable";
 
