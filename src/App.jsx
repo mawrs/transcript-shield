@@ -112,6 +112,15 @@ export default function App() {
   const [dict, setDict] = useState(() => Object.fromEntries(DICT_TERMS.map(d => [d.term, true])));
   const [pop, setPop] = useState(null);
   const [sent, setSent] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = (e) => { setMobile(e.matches); if (!e.matches) setSidebarOpen(false); };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
@@ -146,23 +155,32 @@ export default function App() {
   const setAllFill = (val) => setFillers(Object.fromEntries(Object.keys(fillers).map(k => [k, val])));
 
   return (
-    <div style={{ fontFamily: F.ui, background: c.bg, color: c.ink, height: "100vh", minHeight: 640, display: "flex", flexDirection: "column", WebkitFontSmoothing: "antialiased" }}>
+    <div className="pd-app" style={{ fontFamily: F.ui, background: c.bg, color: c.ink, height: "100vh", minHeight: 640, display: "flex", flexDirection: "column", WebkitFontSmoothing: "antialiased" }}>
       <GlobalStyle />
 
-      <header style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 22px", height: 58, borderBottom: `1px solid ${c.line}`, background: c.surface, flexShrink: 0 }}>
-        <img src="/logo.svg" alt="Peridot" style={{ height: 22, width: "auto", display: "block" }} />
-        <div style={{ flex: 1 }} />
-        <Segmented value={view} onChange={setView} options={[["cleaned", "Cleaned"], ["original", "Original"]]} />
-        <button className="pd-btn" onClick={() => setSent(true)}
-          style={{ display: "flex", alignItems: "center", gap: 7, background: c.peridot, color: "#fff", border: "none", borderRadius: 9, padding: "9px 15px", fontFamily: F.ui, fontWeight: 600, fontSize: 13.5, cursor: "pointer", boxShadow: `0 1px 2px ${c.peridotDeep}55` }}
-          onMouseEnter={e => e.currentTarget.style.background = c.peridotDeep}
-          onMouseLeave={e => e.currentTarget.style.background = c.peridot}>
-          Send to analysis <ChevronRight size={15} strokeWidth={2.5} />
-        </button>
+      <header className="pd-header" style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 22px", height: 58, borderBottom: `1px solid ${c.line}`, background: c.surface, flexShrink: 0 }}>
+        <img className="pd-logo" src="/logo.svg" alt="Transcript" style={{ height: 22, width: "auto", display: "block" }} />
+        {mobile && (
+          <button type="button" className="pd-btn pd-panel-btn" onClick={() => setSidebarOpen(o => !o)}
+            style={{ display: "none", alignItems: "center", gap: 6, background: sidebarOpen ? c.peridotTint : c.sunken, color: c.ink, border: `1px solid ${sidebarOpen ? c.peridot + "55" : c.line}`, borderRadius: 8, padding: "7px 11px", fontFamily: F.ui, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
+            {sidebarOpen ? "Transcript" : "Details"}
+          </button>
+        )}
+        <div className="pd-header-spacer" style={{ flex: 1 }} />
+        <div className="pd-header-actions" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Segmented value={view} onChange={setView} options={[["cleaned", "Cleaned"], ["original", "Original"]]} />
+          <button className="pd-btn pd-header-cta" onClick={() => setSent(true)}
+            style={{ display: "flex", alignItems: "center", gap: 7, background: c.peridot, color: "#fff", border: "none", borderRadius: 9, padding: "9px 15px", fontFamily: F.ui, fontWeight: 600, fontSize: 13.5, cursor: "pointer", boxShadow: `0 1px 2px ${c.peridotDeep}55` }}
+            onMouseEnter={e => e.currentTarget.style.background = c.peridotDeep}
+            onMouseLeave={e => e.currentTarget.style.background = c.peridot}>
+            <span className="pd-cta-label">Send to analysis</span> <ChevronRight size={15} strokeWidth={2.5} />
+          </button>
+        </div>
       </header>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-        <aside className="pd-scroll" style={{ width: 296, flexShrink: 0, borderRight: `1px solid ${c.line}`, background: c.surface, overflowY: "auto", padding: "20px 18px" }}>
+      <div className="pd-body" style={{ flex: 1, minHeight: 0, display: "flex" }}>
+        {mobile && sidebarOpen && <div className="pd-sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+        <aside className={`pd-scroll pd-sidebar${mobile && sidebarOpen ? " pd-sidebar-open" : ""}`} style={{ width: 296, flexShrink: 0, borderRight: `1px solid ${c.line}`, background: c.surface, overflowY: "auto", padding: "20px 18px" }}>
           <RailHead icon={<Mic size={13} />}>Speakers</RailHead>
           <div style={{ marginBottom: 26 }}>
             {Object.entries(speakers).map(([id, sp]) => (
@@ -198,14 +216,14 @@ export default function App() {
           </div>
         </aside>
 
-        <main className="pd-scroll" style={{ flex: 1, overflowY: "auto", padding: "30px 0 40px" }} onClick={closePop}>
-          <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 22, paddingBottom: 18, borderBottom: `1px solid ${c.line}` }}>
+        <main className="pd-scroll pd-main" style={{ flex: 1, overflowY: "auto", padding: "30px 0 40px" }} onClick={() => { closePop(); if (mobile) setSidebarOpen(false); }}>
+          <div className="pd-main-inner" style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px" }}>
+            <div className="pd-doc-head" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 22, paddingBottom: 18, borderBottom: `1px solid ${c.line}` }}>
               <div>
-                <h1 style={{ fontFamily: F.read, fontSize: 25, fontWeight: 500, margin: 0, letterSpacing: -0.3 }}>Clearwater · fintech onboarding research</h1>
-                <p style={{ fontSize: 12.5, color: c.muted, margin: "5px 0 0", fontFamily: F.mono }}>recorded today · {fmt(DURATION)} · auto-transcribed</p>
+                <h1 className="pd-title" style={{ fontFamily: F.read, fontSize: 25, fontWeight: 500, margin: 0, letterSpacing: -0.3 }}>Clearwater · fintech onboarding research</h1>
+                <p className="pd-subtitle" style={{ fontSize: 12.5, color: c.muted, margin: "5px 0 0", fontFamily: F.mono }}>recorded today · {fmt(DURATION)} · auto-transcribed</p>
               </div>
-              <span style={{ fontSize: 11.5, color: view === "original" ? c.inkSoft : c.peridot, fontWeight: 600, background: view === "original" ? c.sunken : c.peridotTint, padding: "4px 10px", borderRadius: 99 }}>
+              <span className="pd-badge" style={{ fontSize: 11.5, color: view === "original" ? c.inkSoft : c.peridot, fontWeight: 600, background: view === "original" ? c.sunken : c.peridotTint, padding: "4px 10px", borderRadius: 99, flexShrink: 0 }}>
                 {view === "original" ? "Original — raw transcript" : "Cleaned copy"}
               </span>
             </div>
@@ -252,13 +270,62 @@ function GlobalStyle() {
       .pd-scroll::-webkit-scrollbar-thumb { background: ${c.lineStrong}; border-radius: 99px; border: 3px solid ${c.bg}; }
       input.pd-input { font-family: ${F.ui}; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+      @media (max-width: 768px) {
+        .pd-app { height: 100dvh; min-height: 100dvh; }
+        .pd-header { padding: 10px 14px; gap: 10px; height: auto; min-height: 52px; flex-wrap: wrap; }
+        .pd-logo { height: 18px !important; }
+        .pd-panel-btn { display: flex !important; }
+        .pd-header-spacer { display: none; }
+        .pd-header-actions { flex: 1; justify-content: flex-end; gap: 8px; min-width: 0; }
+        .pd-segmented button { padding: 5px 10px !important; font-size: 11.5px !important; }
+        .pd-cta-label { display: none; }
+        .pd-seg { -webkit-tap-highlight-color: transparent; }
+        .pd-body { flex-direction: column; position: relative; }
+        .pd-sidebar {
+          position: fixed; top: 0; left: 0; bottom: 0; z-index: 35;
+          width: min(320px, 88vw) !important; max-width: 88vw;
+          transform: translateX(-105%); transition: transform .22s ease;
+          box-shadow: none; border-right: 1px solid ${c.lineStrong};
+        }
+        .pd-sidebar-open { transform: translateX(0); box-shadow: 8px 0 32px rgba(26,26,28,.12); }
+        .pd-sidebar-backdrop {
+          position: fixed; inset: 0; z-index: 34; background: rgba(26,26,28,.32);
+          animation: pdFade .18s ease both;
+        }
+        @keyframes pdFade { from { opacity: 0 } to { opacity: 1 } }
+        .pd-main { padding: 20px 0 32px !important; flex: 1; min-height: 0; }
+        .pd-main-inner { padding: 0 16px !important; }
+        .pd-doc-head { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+        .pd-title { font-size: 20px !important; line-height: 1.25; }
+        .pd-subtitle { font-size: 11px !important; }
+        .pd-turn { gap: 12px !important; padding: 10px 8px !important; }
+        .pd-turn-text { font-size: 16px !important; line-height: 1.58 !important; }
+        .pd-turn-time { width: 44px !important; }
+        .pd-audio { height: auto !important; min-height: 72px; padding: 12px 14px !important; gap: 12px !important; }
+        .pd-audio-caption { display: none !important; }
+        .pd-audio-times { font-size: 10px !important; }
+        .pd-video-panel {
+          right: 12px !important; bottom: 82px !important;
+          width: min(280px, calc(100vw - 24px)) !important;
+        }
+        .pd-video-collapsed {
+          right: 12px !important; bottom: 82px !important;
+          font-size: 11px !important; padding: 7px 12px 7px 8px !important;
+        }
+        .pd-video-collapsed-label { display: none; }
+        .pd-popover { width: min(280px, calc(100vw - 28px)) !important; max-width: calc(100vw - 28px); }
+        .pd-sent-card { width: min(380px, calc(100vw - 32px)) !important; padding: 22px 18px !important; }
+        .pd-sent-stats { gap: 6px !important; }
+        .pd-sent-stat { padding: 10px 4px !important; }
+      }
     `}</style>
   );
 }
 
 function Segmented({ value, onChange, options }) {
   return (
-    <div style={{ display: "flex", background: c.sunken, borderRadius: 9, padding: 3, gap: 2 }}>
+    <div className="pd-segmented" style={{ display: "flex", background: c.sunken, borderRadius: 9, padding: 3, gap: 2 }}>
       {options.map(([val, label]) => (
         <button key={val} onClick={() => onChange(val)} className="pd-btn"
           style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 13px", borderRadius: 7, border: "none", cursor: "pointer", fontFamily: F.ui,
@@ -273,16 +340,16 @@ function Turn({ turn, active, speaker, view, fillers, pii, terms, onSeek, onItem
   return (
     <div className="pd-turn" style={{ display: "flex", gap: 18, padding: "12px 14px", marginBottom: 4, borderRadius: 12,
       background: active ? c.peridotTint + "99" : "transparent" }}>
-      <button onClick={onSeek} className="pd-btn" title="Play from here"
+      <button onClick={onSeek} className="pd-btn pd-turn-time" title="Play from here"
         style={{ flexShrink: 0, width: 52, textAlign: "left", background: "none", border: "none", cursor: "pointer", paddingTop: 4 }}>
         <span style={{ fontFamily: F.mono, fontSize: 12, color: active ? c.peridotDeep : c.muted, fontWeight: 500 }}>{fmt(turn.start)}</span>
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: isMod ? c.peridotDeep : c.ink }}>{speaker.label}</span>
           <span style={{ fontSize: 10.5, fontWeight: 600, color: c.muted, textTransform: "uppercase", letterSpacing: 0.4, background: c.sunken, padding: "1px 6px", borderRadius: 4 }}>{speaker.role}</span>
         </div>
-        <p style={{ fontFamily: F.read, fontSize: 17.5, lineHeight: 1.62, margin: 0, color: c.ink }}>
+        <p className="pd-turn-text" style={{ fontFamily: F.read, fontSize: 17.5, lineHeight: 1.62, margin: 0, color: c.ink }}>
           {turn.segs.map((s, i) => <Segment key={i} s={s} view={view} fillers={fillers} pii={pii} terms={terms} onItem={onItem} />)}
         </p>
       </div>
@@ -334,7 +401,7 @@ function Popover({ pop, onClose, fillers, pii, terms, dict, setFillers, setPii, 
   const ref = useRef(null);
   const [pos, setPos] = useState({ left: 0, top: 0, ready: false });
   useEffect(() => {
-    const W = 280, r = pop.rect;
+    const W = Math.min(280, window.innerWidth - 28), r = pop.rect;
     let left = Math.max(14, Math.min(r.left + r.width / 2 - W / 2, window.innerWidth - W - 14));
     let top = r.bottom + 8;
     const h = ref.current?.offsetHeight ?? 150;
@@ -371,7 +438,7 @@ function Popover({ pop, onClose, fillers, pii, terms, dict, setFillers, setPii, 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-      <div ref={ref} onClick={e => e.stopPropagation()} style={{ position: "fixed", left: pos.left, top: pos.top, width: 280, zIndex: 41,
+      <div ref={ref} onClick={e => e.stopPropagation()} className="pd-popover" style={{ position: "fixed", left: pos.left, top: pos.top, width: 280, zIndex: 41,
         background: c.surface, border: `1px solid ${c.lineStrong}`, borderRadius: 13, boxShadow: "0 12px 34px rgba(28,33,27,.16), 0 2px 6px rgba(28,33,27,.08)",
         opacity: pos.ready ? 1 : 0, animation: pos.ready ? "pdRise .14s ease both" : "none", overflow: "hidden" }}>{body}</div>
     </>
@@ -480,23 +547,23 @@ function DictRow({ d, on, toggle }) {
 }
 
 function SourceVideo({ playing, t, toggle, name }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
   const [mode, setMode] = useState("source");
   const share = mode === "shareable";
 
   if (collapsed) {
     return (
-      <button onClick={() => setCollapsed(false)} className="pd-btn"
+      <button onClick={() => setCollapsed(false)} className="pd-btn pd-video-collapsed"
         style={{ position: "fixed", right: 24, bottom: 94, zIndex: 30, display: "flex", alignItems: "center", gap: 9, background: c.ink, color: "#fff", border: "none", borderRadius: 99, padding: "8px 15px 8px 9px", cursor: "pointer", fontFamily: F.ui, fontWeight: 600, fontSize: 12.5, boxShadow: "0 8px 22px rgba(28,33,27,.28)" }}>
         <span style={{ display: "grid", placeItems: "center", width: 24, height: 24, borderRadius: 99, background: c.peridot }}>
           {playing ? <Pause size={11} fill="#fff" color="#fff" /> : <Play size={11} fill="#fff" color="#fff" style={{ marginLeft: 1 }} />}
         </span>
-        Source video <span style={{ fontFamily: F.mono, color: c.peridotGlow, fontWeight: 500 }}>{fmt(t)}</span>
+        <span className="pd-video-collapsed-label">Source video</span> <span style={{ fontFamily: F.mono, color: c.peridotGlow, fontWeight: 500 }}>{fmt(t)}</span>
       </button>
     );
   }
   return (
-    <div style={{ position: "fixed", right: 24, bottom: 94, zIndex: 30, width: 300, background: c.surface, borderRadius: 14, border: `1px solid ${c.lineStrong}`, boxShadow: "0 14px 38px rgba(28,33,27,.22)", overflow: "hidden", animation: "pdRise .16s ease both" }}>
+    <div className="pd-video-panel" style={{ position: "fixed", right: 24, bottom: 94, zIndex: 30, width: 300, background: c.surface, borderRadius: 14, border: `1px solid ${c.lineStrong}`, boxShadow: "0 14px 38px rgba(28,33,27,.22)", overflow: "hidden", animation: "pdRise .16s ease both" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 8px 9px 12px", borderBottom: `1px solid ${c.line}` }}>
         <span style={{ width: 7, height: 7, borderRadius: 99, background: "#D5483B" }} />
         <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.2 }}>Source recording</span>
@@ -584,7 +651,7 @@ function AudioBar({ playing, toggle, t, onScrub }) {
   };
   const prog = t / DURATION;
   return (
-    <footer style={{ height: 78, flexShrink: 0, borderTop: `1px solid ${c.line}`, background: c.surface, display: "flex", alignItems: "center", gap: 18, padding: "0 24px" }}>
+    <footer className="pd-audio" style={{ height: 78, flexShrink: 0, borderTop: `1px solid ${c.line}`, background: c.surface, display: "flex", alignItems: "center", gap: 18, padding: "0 24px" }}>
       <button onClick={toggle} className="pd-btn" style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 999, border: "none", background: c.ink, color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}>
         {playing ? <Pause size={17} fill="#fff" /> : <Play size={17} fill="#fff" style={{ marginLeft: 2 }} />}
       </button>
@@ -595,9 +662,9 @@ function AudioBar({ playing, toggle, t, onScrub }) {
             return <div key={i} className="pd-bar" style={{ flex: 1, height: `${h * 100}%`, minWidth: 2, borderRadius: 2, background: played ? c.peridot : c.lineStrong }} />;
           })}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 11, color: c.muted }}>
+        <div className="pd-audio-times" style={{ display: "flex", justifyContent: "space-between", fontFamily: F.mono, fontSize: 11, color: c.muted }}>
           <span style={{ color: c.peridotDeep, fontWeight: 500 }}>{fmt(t)}</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="pd-audio-caption" style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: 99, background: c.peridot, display: "inline-block" }} />
             source recording — the ground truth behind every citation
           </span>
@@ -611,7 +678,7 @@ function AudioBar({ playing, toggle, t, onScrub }) {
 function Sent({ counts, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(28,33,27,.34)", display: "grid", placeItems: "center", padding: 20 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 380, background: c.surface, borderRadius: 18, padding: 28, textAlign: "center", boxShadow: "0 24px 60px rgba(28,33,27,.3)", animation: "pdToast .2s ease both" }}>
+      <div onClick={e => e.stopPropagation()} className="pd-sent-card" style={{ width: 380, background: c.surface, borderRadius: 18, padding: 28, textAlign: "center", boxShadow: "0 24px 60px rgba(28,33,27,.3)", animation: "pdToast .2s ease both" }}>
         <div style={{ width: 50, height: 50, borderRadius: 999, background: c.peridotTint, display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
           <Check size={24} color={c.peridotDeep} strokeWidth={2.6} />
         </div>
@@ -619,9 +686,9 @@ function Sent({ counts, onClose }) {
         <p style={{ fontSize: 13.5, color: c.inkSoft, lineHeight: 1.55, margin: "0 0 20px" }}>
           Redactions cover the transcript, the insights, and anything you export, while the source recording stays whole so every quote traces back to what was really said.
         </p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+        <div className="pd-sent-stats" style={{ display: "flex", gap: 8, marginBottom: 22 }}>
           {[[`${counts.fill}`, "fillers trimmed"], [`${counts.pii}`, "items redacted"], [`${counts.term}`, "fixes applied"]].map(([n, l]) => (
-            <div key={l} style={{ flex: 1, background: c.sunken, borderRadius: 11, padding: "12px 6px" }}>
+            <div key={l} className="pd-sent-stat" style={{ flex: 1, background: c.sunken, borderRadius: 11, padding: "12px 6px" }}>
               <div style={{ fontFamily: F.mono, fontSize: 20, fontWeight: 500, color: c.peridotDeep }}>{n}</div>
               <div style={{ fontSize: 10.5, color: c.muted, marginTop: 2 }}>{l}</div>
             </div>
