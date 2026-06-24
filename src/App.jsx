@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Play, Pause, Check, ChevronRight, ChevronDown, Mic, ShieldAlert,
-  ShieldCheck, Lock, BookText, Eraser, Sparkles, Menu, X,
+  Play, Pause, Check, ChevronRight, ChevronDown, ShieldAlert,
+  ShieldCheck, Lock, BookText, Eraser, Menu, X,
 } from "lucide-react";
 
 const c = {
@@ -190,7 +190,7 @@ export default function App() {
       <div className="pd-body" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         {compact && sidebarOpen && <div className="pd-sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
         <aside className={`pd-scroll pd-sidebar${compact && sidebarOpen ? " pd-sidebar-open" : ""}`} style={{ width: 296, flexShrink: 0, borderRight: `1px solid ${c.line}`, background: c.surface, overflowY: "auto", padding: "20px 18px" }}>
-          <RailHead icon={<Mic size={13} />}>Speakers</RailHead>
+          <RailHead>Speakers</RailHead>
           <div style={{ marginBottom: 26 }}>
             {Object.entries(speakers).map(([id, sp]) => (
               <SpeakerRow key={id} id={id} sp={sp} editing={editingSp === id}
@@ -200,7 +200,7 @@ export default function App() {
             ))}
           </div>
 
-          <RailHead icon={<Sparkles size={13} />}>Ready to analyze</RailHead>
+          <RailHead>Ready to analyze</RailHead>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
             <SummaryRow color={c.fillerInk} icon={<Eraser size={14} />} title="Filler words"
               detail={`${counts.fill} of ${totalFill} removed`}
@@ -214,7 +214,7 @@ export default function App() {
             <span>Redaction covers the transcript, insights, and exports. The source recording stays whole so you can verify quotes.</span>
           </p>
 
-          <RailHead icon={<BookText size={13} />}>Workspace dictionary</RailHead>
+          <RailHead>Workspace dictionary</RailHead>
           <p style={{ fontSize: 11.5, color: c.muted, lineHeight: 1.5, margin: "0 0 12px" }}>
             Terms here correct automatically in every interview this workspace runs.
           </p>
@@ -505,11 +505,10 @@ function PopBody({ color, icon, tag, title, desc, primary, toggle, state, stateC
   );
 }
 
-function RailHead({ icon, children }) {
+function RailHead({ children }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 13, color: c.inkSoft }}>
-      <span style={{ color: c.muted, display: "grid", placeItems: "center" }}>{icon}</span>
-      <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>{children}</span>
+    <div style={{ marginBottom: 13, color: c.inkSoft }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.1 }}>{children}</span>
     </div>
   );
 }
@@ -571,7 +570,7 @@ function DictRow({ d, on, toggle }) {
   return (
     <button onClick={toggle} className="pd-btn"
       style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 9, cursor: "pointer", fontFamily: F.ui, background: on ? c.surface : c.sunken, border: `1px solid ${c.line}`, opacity: on ? 1 : 0.65 }}>
-      <Switch on={on} color={c.blue} />
+      <Switch on={on} color="#2563EB" />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: c.ink }}>{d.term}</span>
         <span style={{ display: "block", fontSize: 11, color: c.muted, fontFamily: F.mono }}>heard "{d.heard}"</span>
