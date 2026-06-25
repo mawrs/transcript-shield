@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, Check, ChevronRight, ChevronDown, ShieldAlert,
-  ShieldCheck, Lock, BookText, Eraser, Menu, X,
+  ShieldCheck, Lock, BookText, Eraser, Menu, X, AudioLines, IdCard,
 } from "lucide-react";
 
 const c = {
@@ -14,9 +14,9 @@ const c = {
   fillerInk: "#A2A2A8",
 };
 const F = {
-  ui: "'Hanken Grotesque', system-ui, -apple-system, sans-serif",
+  ui: "var(--font-sans)",
   read: "'Newsreader', Georgia, 'Times New Roman', serif",
-  mono: "'JetBrains Mono', ui-monospace, 'SF Mono', monospace",
+  mono: "var(--font-mono)",
 };
 
 const TURNS = [
@@ -165,90 +165,97 @@ export default function App() {
     <div ref={appRef} className={`pd-app${compact ? " pd-compact" : ""}`} style={{ fontFamily: F.ui, background: c.bg, color: c.ink, height: "100vh", minHeight: 640, display: "flex", flexDirection: "column", WebkitFontSmoothing: "antialiased" }}>
       <GlobalStyle />
 
-      <header className="pd-header" style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 22px", height: 58, borderBottom: `1px solid ${c.line}`, background: c.surface, flexShrink: 0 }}>
-        <div className="pd-header-start" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <img className="pd-logo" src="/logo.svg" alt="Transcript" style={{ height: 22, width: "auto", display: "block", flexShrink: 0 }} />
-          <button type="button" className="pd-btn pd-panel-btn" onClick={() => setSidebarOpen(o => !o)}
+      <header className="pd-header">
+        <div className="pd-header-brand">
+          <img className="pd-logo" src="/logo.svg" alt="Transcript" />
+          <button type="button" className={`pd-btn pd-panel-btn${sidebarOpen ? " pd-panel-btn--open" : ""}`} onClick={() => setSidebarOpen(o => !o)}
             aria-label={sidebarOpen ? "Close menu" : "Open menu"}
-            title={sidebarOpen ? "Close menu" : "Open menu"}
-            style={{ alignItems: "center", justifyContent: "center", background: sidebarOpen ? c.peridotTint : c.surface, color: c.ink, border: `1px solid ${sidebarOpen ? c.peridot + "55" : c.line}`, borderRadius: 9, width: 36, height: 36, padding: 0, cursor: "pointer", flexShrink: 0 }}>
+            title={sidebarOpen ? "Close menu" : "Open menu"}>
             {sidebarOpen ? <X size={18} strokeWidth={2.25} /> : <Menu size={18} strokeWidth={2.25} />}
           </button>
         </div>
-        <div className="pd-header-spacer" style={{ flex: 1 }} />
-        <div className="pd-header-actions" style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div className="pd-header-actions">
           <Segmented value={view} onChange={setView} options={[["cleaned", "Cleaned"], ["original", "Original"]]} />
-          <button className="pd-btn pd-header-cta" onClick={() => setSent(true)}
-            style={{ display: "flex", alignItems: "center", gap: 7, background: c.peridot, color: "#fff", border: "none", borderRadius: 9, padding: "9px 15px", fontFamily: F.ui, fontWeight: 600, fontSize: 13.5, cursor: "pointer", boxShadow: `0 1px 2px ${c.peridotDeep}55` }}
-            onMouseEnter={e => e.currentTarget.style.background = c.peridotDeep}
-            onMouseLeave={e => e.currentTarget.style.background = c.peridot}>
-            <span className="pd-cta-label">Send to analysis</span> <ChevronRight size={15} strokeWidth={2.5} />
+          <button type="button" className="pd-btn pd-header-cta" onClick={() => setSent(true)}>
+            <span className="pd-cta-label">Send to analysis</span>
+            <ChevronRight size={16} strokeWidth={2.25} />
           </button>
         </div>
       </header>
 
       <div className="pd-body" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         {compact && sidebarOpen && <div className="pd-sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
-        <aside className={`pd-scroll pd-sidebar${compact && sidebarOpen ? " pd-sidebar-open" : ""}`} style={{ width: 296, flexShrink: 0, borderRight: `1px solid ${c.line}`, background: c.surface, overflowY: "auto", padding: "20px 18px" }}>
-          <RailHead>Speakers</RailHead>
-          <div style={{ marginBottom: 26 }}>
-            {Object.entries(speakers).map(([id, sp]) => (
-              <SpeakerRow key={id} id={id} sp={sp} editing={editingSp === id}
-                onEdit={() => setEditingSp(id)}
-                onSave={(label, role) => { setSpeakers(s => ({ ...s, [id]: { label, role } })); setEditingSp(null); }}
-                onCancel={() => setEditingSp(null)} />
-            ))}
-          </div>
+        <aside className={`pd-scroll pd-sidebar${compact && sidebarOpen ? " pd-sidebar-open" : ""}`}>
+          <section className="pd-sidebar-section">
+            <RailHead>Speakers</RailHead>
+            <div className="pd-sidebar-list">
+              {Object.entries(speakers).map(([id, sp]) => (
+                <SpeakerRow key={id} sp={sp} editing={editingSp === id}
+                  onEdit={() => setEditingSp(id)}
+                  onSave={(label, role) => { setSpeakers(s => ({ ...s, [id]: { label, role } })); setEditingSp(null); }}
+                  onCancel={() => setEditingSp(null)} />
+              ))}
+            </div>
+          </section>
 
-          <RailHead>Ready to analyze</RailHead>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-            <SummaryRow color={c.fillerInk} icon={<Eraser size={14} />} title="Filler words"
-              detail={`${counts.fill} of ${totalFill} removed`}
-              action={counts.fill === totalFill ? "Keep all" : "Remove all"} onAction={() => setAllFill(counts.fill !== totalFill)} />
-            <SummaryRow color={c.amber} icon={<ShieldAlert size={14} />} title="Personal info"
-              detail={`${counts.pii} of ${totalPii} redacted`} flag={counts.pii < totalPii ? `${totalPii - counts.pii} exposed` : null} />
-            <SummaryRow color={c.blue} icon={<BookText size={14} />} title="Corrections" detail={`${counts.term} of ${totalTerm} applied`} />
-          </div>
-          <p style={{ fontSize: 11, color: c.muted, lineHeight: 1.5, margin: "0 0 26px", display: "flex", gap: 6 }}>
-            <Lock size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>Redaction covers the transcript, insights, and exports. The source recording stays whole so you can verify quotes.</span>
-          </p>
+          <section className="pd-sidebar-section">
+            <RailHead>Ready to analyze</RailHead>
+            <div className="pd-sidebar-list">
+              <SummaryRow icon={<AudioLines size={15} strokeWidth={2} />} title="Filler words"
+                detail={`${counts.fill} of ${totalFill} removed`}
+                action={counts.fill === totalFill ? "Keep all" : "Remove all"} onAction={() => setAllFill(counts.fill !== totalFill)} />
+              <SummaryRow icon={<IdCard size={15} strokeWidth={2} />} title="Personal info"
+                detail={`${counts.pii} of ${totalPii} redacted`} />
+              <SummaryRow icon={<Eraser size={15} strokeWidth={2} />} title="Corrections"
+                detail={`${counts.term} of ${totalTerm} applied`} />
+            </div>
+          </section>
 
-          <RailHead>Workspace dictionary</RailHead>
-          <p style={{ fontSize: 11.5, color: c.muted, lineHeight: 1.5, margin: "0 0 12px" }}>
-            Terms here correct automatically in every interview this workspace runs.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {DICT_TERMS.map(d => (
-              <DictRow key={d.term} d={d} on={dict[d.term]} toggle={() => setDict(s => ({ ...s, [d.term]: !s[d.term] }))} />
-            ))}
-          </div>
+          <section className="pd-sidebar-section">
+            <div className="pd-sidebar-dict-head">
+              <RailHead>Workspace dictionary</RailHead>
+              <p className="pd-sidebar-dict-desc">Terms here correct automatically in every interview this workspace runs.</p>
+            </div>
+            <div className="pd-sidebar-list">
+              {DICT_TERMS.map(d => (
+                <DictRow key={d.term} d={d} on={dict[d.term]} toggle={() => setDict(s => ({ ...s, [d.term]: !s[d.term] }))} />
+              ))}
+            </div>
+          </section>
         </aside>
 
-        <main className="pd-scroll pd-main" style={{ flex: 1, overflowY: "auto", padding: "30px 0 40px" }} onClick={() => { closePop(); if (compact) setSidebarOpen(false); }}>
-          <div className="pd-main-inner" style={{ maxWidth: 720, margin: "0 auto", padding: "0 40px" }}>
-            <div className="pd-doc-head" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 22, paddingBottom: 18, borderBottom: `1px solid ${c.line}` }}>
-              <div className="pd-doc-meta" style={{ minWidth: 0, flex: 1 }}>
-                <h1 className="pd-title" style={{ fontFamily: F.read, fontSize: 25, fontWeight: 500, margin: 0, letterSpacing: -0.3 }}>
-                  <span className="pd-title-line">Clearwater</span>
-                  <span className="pd-title-line pd-title-line-sub">fintech onboarding research</span>
+        <main className="pd-scroll pd-main" onClick={() => { closePop(); if (compact) setSidebarOpen(false); }}>
+          <div className="pd-main-inner">
+            <header className="pd-doc-head">
+              <div className="pd-doc-meta">
+                <h1 className="pd-title">
+                  <span>Clearwater</span>
+                  <span className="pd-title-sep" aria-hidden>·</span>
+                  <span>Fintech onboarding research</span>
                 </h1>
-                <p className="pd-subtitle" style={{ fontSize: 12.5, color: c.muted, margin: "8px 0 0", fontFamily: F.mono }}>recorded today · {fmt(DURATION)} · auto-transcribed</p>
+                <p className="pd-subtitle">
+                  <span>Recorded today</span>
+                  <span className="pd-subtitle-sep" aria-hidden>·</span>
+                  <span>{fmt(DURATION)}</span>
+                  <span className="pd-subtitle-sep" aria-hidden>·</span>
+                  <span>Auto-transcribed</span>
+                </p>
               </div>
-              <span className="pd-badge" style={{ fontSize: 11.5, color: view === "original" ? c.inkSoft : c.peridot, fontWeight: 600, background: view === "original" ? c.sunken : c.peridotTint, padding: "4px 10px", borderRadius: 99, flexShrink: 0 }}>
-                <span className="pd-badge-long">{view === "original" ? "Original — raw transcript" : "Cleaned copy"}</span>
-                <span className="pd-badge-short">{view === "original" ? "Original" : "Cleaned"}</span>
+              <span className={`pd-doc-badge${view === "original" ? " pd-doc-badge--original" : ""}`}>
+                {view === "original" ? "Original transcript" : "Cleaned transcript"}
               </span>
+            </header>
+
+            <div className="pd-turns">
+              {TURNS.map(turn => (
+                <Turn key={turn.id} turn={turn} active={activeTurn === turn.id} speaker={speakers[turn.sp]}
+                  view={view} fillers={fillers} pii={pii} terms={terms}
+                  onSeek={() => seekTo(turn.start)}
+                  onItem={(kind, id, rect) => setPop({ kind, id, rect })} />
+              ))}
             </div>
 
-            {TURNS.map(turn => (
-              <Turn key={turn.id} turn={turn} active={activeTurn === turn.id} speaker={speakers[turn.sp]}
-                view={view} fillers={fillers} pii={pii} terms={terms}
-                onSeek={() => seekTo(turn.start)}
-                onItem={(kind, id, rect) => setPop({ kind, id, rect })} />
-            ))}
-
-            <p style={{ fontFamily: F.mono, fontSize: 11, color: c.muted, textAlign: "center", marginTop: 30 }}>— end of recording —</p>
+            <p className="pd-end-mark">— end of recording —</p>
           </div>
         </main>
       </div>
@@ -269,13 +276,9 @@ export default function App() {
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesque:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap');
       * { box-sizing: border-box; }
       .pd-app { container-type: inline-size; container-name: pd; }
-      .pd-panel-btn { display: none; }
-      .pd-compact .pd-panel-btn { display: flex !important; }
-      .pd-badge-short { display: none; }
-      .pd-title-line { display: inline; }
       ::selection { background: ${c.peridotTint}; }
       .pd-seg { cursor: pointer; border-radius: 4px; transition: background .12s ease, opacity .18s ease, color .15s ease; }
       .pd-btn { transition: background .14s ease, border-color .14s ease, transform .04s ease; }
@@ -287,24 +290,277 @@ function GlobalStyle() {
       .pd-scroll::-webkit-scrollbar { width: 9px; }
       .pd-scroll::-webkit-scrollbar-thumb { background: ${c.lineStrong}; border-radius: 99px; border: 3px solid ${c.bg}; }
       input.pd-input { font-family: ${F.ui}; }
+
+      .pd-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: var(--spacing-s) var(--spacing-md);
+        border-bottom: var(--border-width) solid var(--color-stroke-base);
+        background: var(--color-bg-white); flex-shrink: 0;
+      }
+      .pd-header-brand {
+        display: flex; align-items: center; gap: 6px; min-width: 0;
+      }
+      .pd-logo {
+        height: 25px; width: auto; display: block; flex-shrink: 0;
+      }
+      .pd-panel-btn {
+        display: none; align-items: center; justify-content: center;
+        width: 36px; height: 36px; padding: 0; flex-shrink: 0; cursor: pointer;
+        border-radius: var(--radius-base);
+        border: var(--border-width) solid var(--color-stroke-medium);
+        background: var(--color-bg-white); color: var(--color-text-heading);
+      }
+      .pd-panel-btn--open {
+        background: var(--color-bg-danger-soft);
+        border-color: var(--color-stroke-danger);
+      }
+      .pd-header-actions {
+        display: flex; align-items: center; gap: var(--spacing-xxs); flex-shrink: 0;
+      }
+      .pd-segmented {
+        display: flex; align-items: stretch;
+        background: var(--color-bg-light);
+        border-radius: var(--radius-base); padding: 3px; gap: 2px;
+      }
+      .pd-segmented-btn {
+        font-family: var(--font-sans); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+        line-height: var(--line-height-xs);
+        padding: 5px 12px; cursor: pointer;
+        border: none; border-radius: 6px;
+        background: transparent; color: var(--color-text-body-subtle);
+      }
+      .pd-segmented-btn--active {
+        background: var(--color-bg-white); color: var(--color-text-heading);
+        box-shadow: 0 1px 2px rgba(28, 33, 27, 0.1);
+      }
+      .pd-segmented--fill { width: 100%; }
+      .pd-segmented--fill .pd-segmented-btn { flex: 1; text-align: center; padding-inline: 6px; }
+      .pd-header-cta {
+        display: flex; align-items: center; gap: 6px;
+        background: var(--color-bg-danger); color: var(--color-text-white);
+        border: none; border-radius: var(--radius-base);
+        padding: var(--spacing-xs) 12px; cursor: pointer;
+        font-family: var(--font-sans); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+        line-height: var(--line-height-xs); box-shadow: var(--shadow-xs);
+      }
+      .pd-header-cta:hover { background: var(--color-red-800); }
+      .pd-header-cta svg { flex-shrink: 0; }
+
+      .pd-main { flex: 1; min-height: 0; overflow-y: auto; background: var(--color-bg-soft); }
+      .pd-main-inner {
+        display: flex; flex-direction: column; gap: var(--spacing-l);
+        padding: var(--spacing-xl) 96px;
+      }
+      .pd-doc-head {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: var(--spacing-s); padding-bottom: var(--spacing-l);
+        border-bottom: var(--border-width) solid var(--color-stroke-medium);
+      }
+      .pd-doc-meta { min-width: 0; flex: 1; }
+      .pd-title {
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--spacing-xxs);
+        margin: 0; font-family: var(--font-sans);
+        font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold);
+        color: var(--color-text-heading); line-height: 1;
+      }
+      .pd-title-sep { color: var(--color-text-heading); }
+      .pd-subtitle {
+        display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs);
+        margin: var(--spacing-xs) 0 0;
+        font-family: var(--font-sans); font-size: var(--font-size-base);
+        font-weight: var(--font-weight-normal); color: var(--color-text-body);
+        line-height: var(--line-height-xs);
+      }
+      .pd-doc-badge {
+        flex-shrink: 0; border-radius: var(--radius-base);
+        padding: var(--spacing-xxs) var(--spacing-xs);
+        font-family: var(--font-sans); font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium); line-height: var(--line-height-xs);
+        background: var(--color-bg-success-soft);
+        border: var(--border-width) solid var(--color-border-success-subtle);
+        color: var(--color-text-success-strong);
+      }
+      .pd-doc-badge--original {
+        background: var(--color-bg-white);
+        border-color: var(--color-stroke-medium);
+        color: var(--color-text-body);
+      }
+      .pd-turns { display: flex; flex-direction: column; gap: var(--spacing-s); }
+      .pd-turn { display: flex; gap: var(--spacing-l); align-items: flex-start; }
+      .pd-turn-time {
+        flex-shrink: 0; background: none; border: none; cursor: pointer;
+        padding: var(--spacing-s) 0; margin: 0;
+        font-family: var(--font-sans); font-size: var(--font-size-base);
+        font-weight: var(--font-weight-normal); line-height: var(--line-height-xs);
+        color: var(--color-text-body);
+      }
+      .pd-turn-time--active { color: var(--color-text-danger); font-weight: var(--font-weight-medium); }
+      .pd-turn-content { flex: 1; min-width: 0; padding: var(--spacing-s) var(--spacing-md); }
+      .pd-turn-head {
+        display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-xs);
+        margin-bottom: var(--spacing-xs);
+      }
+      .pd-turn-speaker {
+        font-family: var(--font-sans); font-size: var(--font-size-base);
+        font-weight: var(--font-weight-bold); line-height: var(--line-height-xs);
+        color: var(--color-text-heading);
+      }
+      .pd-turn-speaker--mod { color: var(--color-text-danger); }
+      .pd-turn-role {
+        font-family: var(--font-sans); font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium); line-height: var(--line-height-xs);
+        color: var(--color-text-heading);
+        background: var(--color-bg-soft);
+        border: var(--border-width) solid var(--color-stroke-medium);
+        border-radius: var(--radius-base);
+        padding: 2px 6px;
+      }
+      .pd-turn-text {
+        font-family: ${F.read}; font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-normal); color: var(--color-text-body);
+        line-height: 1.55; margin: 0;
+      }
+      .pd-seg--fill {
+        color: var(--color-gray-400);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+      }
+      .pd-end-mark {
+        font-family: var(--font-sans); font-size: var(--font-size-xs);
+        color: var(--color-text-body-subtle); text-align: center; margin: 0;
+      }
+
+      .pd-sidebar {
+        width: var(--sidebar-width); flex-shrink: 0;
+        border-right: var(--border-width) solid var(--color-stroke-base);
+        background: var(--color-bg-white);
+        overflow-y: auto; padding: var(--spacing-md);
+        font-family: var(--font-sans);
+      }
+      .pd-sidebar-section {
+        display: flex; flex-direction: column; gap: var(--spacing-s);
+        margin-bottom: var(--spacing-l);
+      }
+      .pd-sidebar-section:last-child { margin-bottom: 0; }
+      .pd-sidebar-list { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+      .pd-sidebar-head {
+        font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+        color: var(--color-text-body); line-height: var(--line-height-xs);
+        margin: 0;
+      }
+      .pd-sidebar-dict-head { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+      .pd-sidebar-dict-desc {
+        margin: 0; font-size: var(--font-size-xs); line-height: var(--line-height-xs);
+        color: var(--color-text-body-subtle); font-weight: var(--font-weight-medium);
+      }
+      .pd-sidebar-card {
+        display: flex; align-items: center; justify-content: space-between;
+        min-height: 68px; padding: var(--spacing-s);
+        background: var(--color-bg-white);
+        border: var(--border-width) solid var(--color-stroke-medium);
+        border-radius: var(--radius-base);
+      }
+      .pd-sidebar-card-main {
+        display: flex; align-items: center; gap: var(--spacing-xs);
+        flex: 1; min-width: 0;
+      }
+      .pd-sidebar-avatar {
+        width: 32px; height: 32px; flex-shrink: 0;
+        border-radius: var(--radius-base);
+        display: grid; place-items: center;
+        font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+        line-height: 14px;
+      }
+      .pd-sidebar-avatar--mod {
+        background: var(--color-bg-danger-soft);
+        border: var(--border-width) solid var(--color-stroke-danger);
+        color: var(--color-text-danger);
+      }
+      .pd-sidebar-avatar--guest,
+      .pd-sidebar-avatar--icon {
+        background: var(--color-bg-light);
+        border: var(--border-width) solid var(--color-stroke-medium);
+        color: var(--color-text-body);
+      }
+      .pd-sidebar-body {
+        flex: 1; min-width: 0;
+        display: flex; flex-direction: column; gap: var(--spacing-xxs);
+      }
+      .pd-sidebar-title {
+        display: block; font-size: var(--font-size-base); font-weight: var(--font-weight-medium);
+        color: var(--color-text-heading); line-height: var(--line-height-xs);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .pd-sidebar-title--bold { font-weight: var(--font-weight-bold); }
+      .pd-sidebar-sub {
+        display: block; font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
+        color: var(--color-text-body-subtle); line-height: var(--line-height-xs);
+      }
+      .pd-sidebar-edit {
+        flex-shrink: 0; background: none; border: none; padding: 0; cursor: pointer;
+        font-family: var(--font-sans); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
+        color: var(--color-text-danger); line-height: var(--line-height-xs);
+      }
+      .pd-sidebar-edit:hover { text-decoration: underline; }
+      .pd-sidebar-chip {
+        flex-shrink: 0; background: var(--color-bg-soft);
+        border: var(--border-width) solid var(--color-stroke-medium);
+        border-radius: var(--radius-base); box-shadow: var(--shadow-xs);
+        padding: 6px 12px; cursor: pointer; font-family: var(--font-sans);
+        font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
+        color: var(--color-text-body); line-height: var(--line-height-xs); white-space: nowrap;
+      }
+      .pd-sidebar-chip:hover { background: var(--color-gray-100); }
+      .pd-sidebar-toggle-row {
+        display: flex; align-items: center; width: 100%; text-align: left; cursor: pointer;
+        font-family: var(--font-sans);
+        min-height: 68px; padding: var(--spacing-s);
+        background: var(--color-bg-white);
+        border: var(--border-width) solid var(--color-stroke-medium);
+        border-radius: var(--radius-base);
+      }
+      .pd-switch {
+        width: 36px; height: 20px; border-radius: var(--radius-full); flex-shrink: 0;
+        position: relative; transition: background .15s ease, border-color .15s ease;
+        border: var(--border-width) solid transparent;
+      }
+      .pd-switch-knob {
+        position: absolute; top: 2px; width: 16px; height: 16px; border-radius: var(--radius-full);
+        background: var(--color-white); transition: left .15s ease;
+        box-shadow: 0 1px 2px rgba(29, 41, 61, 0.05);
+      }
+      .pd-switch--on {
+        background: var(--color-bg-brand);
+        border-color: var(--color-border-brand-light);
+      }
+      .pd-switch--on .pd-switch-knob { left: 18px; }
+      .pd-switch--off {
+        background: var(--color-bg-light);
+        border-color: var(--color-stroke-medium);
+      }
+      .pd-switch--off .pd-switch-knob { left: 2px; }
+      .pd-sidebar-edit-form {
+        border: var(--border-width) solid var(--color-red-200);
+        border-radius: var(--radius-base); padding: var(--spacing-s);
+        margin-bottom: var(--spacing-xs); background: var(--color-red-50);
+      }
+
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
       @container pd (max-width: 768px) {
         .pd-app { height: 100dvh; min-height: 100dvh; }
-        .pd-header { padding: 10px 12px; gap: 8px; height: auto; min-height: 50px; flex-wrap: nowrap; }
-        .pd-header-start { gap: 0; flex: none; min-width: 0; }
+        .pd-header { padding: 10px 12px; }
         .pd-logo { display: none !important; }
         .pd-panel-btn { display: flex !important; }
-        .pd-header-spacer { display: block; flex: 1; min-width: 8px; }
-        .pd-header-actions { flex: none; gap: 6px; margin-left: auto; }
-        .pd-header-cta { padding: 8px 10px !important; min-width: 36px; justify-content: center; }
-        .pd-segmented button { padding: 5px 9px !important; font-size: 11px !important; }
+        .pd-header-actions { gap: 6px; }
+        .pd-header-cta { padding: var(--spacing-xs) 10px !important; min-width: 36px; justify-content: center; }
+        .pd-segmented-btn { padding: 6px 9px !important; font-size: 11px !important; }
         .pd-cta-label { display: none; }
         .pd-seg { -webkit-tap-highlight-color: transparent; }
         .pd-body { flex-direction: column; position: relative; }
         .pd-sidebar {
           position: fixed; top: 0; left: 0; bottom: 0; z-index: 35;
-          width: min(320px, 88cqw) !important; max-width: 88cqw;
+          width: min(var(--sidebar-width), 88cqw) !important; max-width: 88cqw;
           transform: translateX(-105%); transition: transform .22s ease;
           box-shadow: none; border-right: 1px solid ${c.lineStrong};
         }
@@ -314,20 +570,15 @@ function GlobalStyle() {
           animation: pdFade .18s ease both;
         }
         @keyframes pdFade { from { opacity: 0 } to { opacity: 1 } }
-        .pd-main { padding: 16px 0 28px !important; flex: 1; min-height: 0; }
-        .pd-main-inner { padding: 0 14px !important; }
-        .pd-doc-head { flex-direction: column; align-items: stretch !important; gap: 12px; margin-bottom: 18px !important; padding-bottom: 14px !important; }
-        .pd-doc-meta { width: 100%; }
-        .pd-title { font-size: 18px !important; line-height: 1.3 !important; display: flex; flex-direction: column; gap: 3px; }
-        .pd-title-line { display: block; }
-        .pd-title-line-sub { font-size: 15px !important; font-weight: 400 !important; color: ${c.inkSoft}; letter-spacing: 0 !important; }
-        .pd-subtitle { font-size: 10.5px !important; margin-top: 6px !important; line-height: 1.45; }
-        .pd-badge { align-self: flex-start; font-size: 10.5px !important; padding: 3px 9px !important; }
-        .pd-badge-long { display: none; }
-        .pd-badge-short { display: inline; }
-        .pd-turn { gap: 10px !important; padding: 10px 6px !important; }
-        .pd-turn-text { font-size: 16px !important; line-height: 1.58 !important; }
-        .pd-turn-time { width: 40px !important; }
+        .pd-main-inner { padding: var(--spacing-md) var(--spacing-md) !important; gap: var(--spacing-md) !important; }
+        .pd-doc-head { flex-direction: column; align-items: stretch !important; gap: var(--spacing-xs); padding-bottom: var(--spacing-s) !important; }
+        .pd-title { font-size: var(--font-size-xl) !important; }
+        .pd-subtitle { font-size: var(--font-size-sm) !important; }
+        .pd-doc-badge { align-self: flex-start; font-size: var(--font-size-xs) !important; }
+        .pd-turn { gap: var(--spacing-s) !important; }
+        .pd-turn-content { padding: var(--spacing-xs) var(--spacing-s) !important; }
+        .pd-turn-time { font-size: var(--font-size-sm) !important; padding: var(--spacing-xs) 0 !important; }
+        .pd-turn-text { font-size: var(--font-size-base) !important; line-height: 1.58 !important; }
         .pd-audio { height: auto !important; min-height: 72px; padding: 12px 12px !important; gap: 10px !important; }
         .pd-audio-caption { display: none !important; }
         .pd-audio-times { font-size: 10px !important; }
@@ -346,22 +597,16 @@ function GlobalStyle() {
         .pd-sent-stat { padding: 10px 4px !important; }
       }
 
-      .pd-title-line-sub::before { content: " · "; }
-      @container pd (max-width: 768px) {
-        .pd-title-line-sub::before { content: none; }
-      }
-
     `}</style>
   );
 }
 
-function Segmented({ value, onChange, options }) {
+function Segmented({ value, onChange, options, fill }) {
   return (
-    <div className="pd-segmented" style={{ display: "flex", background: c.sunken, borderRadius: 9, padding: 3, gap: 2 }}>
+    <div className={`pd-segmented${fill ? " pd-segmented--fill" : ""}`} role="group">
       {options.map(([val, label]) => (
-        <button key={val} onClick={() => onChange(val)} className="pd-btn"
-          style={{ fontSize: 12.5, fontWeight: 600, padding: "6px 13px", borderRadius: 7, border: "none", cursor: "pointer", fontFamily: F.ui,
-            background: value === val ? c.surface : "transparent", color: value === val ? c.ink : c.muted, boxShadow: value === val ? "0 1px 2px rgba(28,33,27,.1)" : "none" }}>{label}</button>
+        <button key={val} type="button" onClick={() => onChange(val)} className={`pd-btn pd-segmented-btn${value === val ? " pd-segmented-btn--active" : ""}`}
+          aria-pressed={value === val}>{label}</button>
       ))}
     </div>
   );
@@ -370,18 +615,16 @@ function Segmented({ value, onChange, options }) {
 function Turn({ turn, active, speaker, view, fillers, pii, terms, onSeek, onItem }) {
   const isMod = speaker.role === "Moderator";
   return (
-    <div className="pd-turn" style={{ display: "flex", gap: 18, padding: "12px 14px", marginBottom: 4, borderRadius: 12,
-      background: active ? c.peridotTint + "99" : "transparent" }}>
-      <button onClick={onSeek} className="pd-btn pd-turn-time" title="Play from here"
-        style={{ flexShrink: 0, width: 52, textAlign: "left", background: "none", border: "none", cursor: "pointer", paddingTop: 4 }}>
-        <span style={{ fontFamily: F.mono, fontSize: 12, color: active ? c.peridotDeep : c.muted, fontWeight: 500 }}>{fmt(turn.start)}</span>
+    <div className="pd-turn">
+      <button type="button" onClick={onSeek} className={`pd-btn pd-turn-time${active ? " pd-turn-time--active" : ""}`} title="Play from here">
+        {fmt(turn.start)}
       </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: isMod ? c.peridotDeep : c.ink }}>{speaker.label}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 600, color: c.muted, textTransform: "uppercase", letterSpacing: 0.4, background: c.sunken, padding: "1px 6px", borderRadius: 4 }}>{speaker.role}</span>
+      <div className="pd-turn-content">
+        <div className="pd-turn-head">
+          <span className={`pd-turn-speaker${isMod ? " pd-turn-speaker--mod" : ""}`}>{speaker.label}</span>
+          <span className="pd-turn-role">{speaker.role}</span>
         </div>
-        <p className="pd-turn-text" style={{ fontFamily: F.read, fontSize: 17.5, lineHeight: 1.62, margin: 0, color: c.ink }}>
+        <p className="pd-turn-text">
           {turn.segs.map((s, i) => <Segment key={i} s={s} view={view} fillers={fillers} pii={pii} terms={terms} onItem={onItem} />)}
         </p>
       </div>
@@ -396,8 +639,7 @@ function Segment({ s, view, fillers, pii, terms, onItem }) {
   if (s.t === "fill") {
     const removed = fillers[s.id];
     if (orig) return <span>{s.v}</span>;
-    if (removed) return <span className="pd-seg" onClick={e => { e.stopPropagation(); onItem("fill", s.id, e.currentTarget.getBoundingClientRect()); }}
-      style={{ color: c.fillerInk, textDecoration: "line-through", textDecorationThickness: 1, opacity: 0.55, padding: "0 1px" }}>{s.v}</span>;
+    if (removed) return <span className="pd-seg pd-seg--fill" onClick={e => { e.stopPropagation(); onItem("fill", s.id, e.currentTarget.getBoundingClientRect()); }}>{s.v}</span>;
     return <span className="pd-seg" onClick={e => { e.stopPropagation(); onItem("fill", s.id, e.currentTarget.getBoundingClientRect()); }} style={{ background: c.sunken }}>{s.v}</span>;
   }
 
@@ -506,75 +748,74 @@ function PopBody({ color, icon, tag, title, desc, primary, toggle, state, stateC
 }
 
 function RailHead({ children }) {
-  return (
-    <div style={{ marginBottom: 13, color: c.inkSoft }}>
-      <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.1 }}>{children}</span>
-    </div>
-  );
+  return <h2 className="pd-sidebar-head">{children}</h2>;
 }
 
-function SpeakerRow({ id, sp, editing, onEdit, onSave, onCancel }) {
+function SpeakerRow({ sp, editing, onEdit, onSave, onCancel }) {
   const [label, setLabel] = useState(sp.label);
   const [role, setRole] = useState(sp.role);
   useEffect(() => { setLabel(sp.label); setRole(sp.role); }, [sp, editing]);
   const isMod = sp.role === "Moderator";
+  const initials = sp.label.split(" ").map(w => w[0]).join("").slice(0, 2);
+
   if (editing) {
     return (
-      <div style={{ border: `1px solid ${c.peridot}66`, borderRadius: 10, padding: 11, marginBottom: 8, background: c.peridotTint + "55" }}>
+      <div className="pd-sidebar-edit-form">
         <input className="pd-input" autoFocus value={label} onChange={e => setLabel(e.target.value)}
-          style={{ width: "100%", border: `1px solid ${c.lineStrong}`, borderRadius: 7, padding: "7px 9px", fontSize: 13, marginBottom: 7, outline: "none", color: c.ink }} />
-        <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
+          style={{ width: "100%", border: `1px solid var(--color-gray-300)`, borderRadius: "var(--radius-base)", padding: "8px 10px", fontSize: "var(--font-size-sm)", marginBottom: 8, outline: "none", color: "var(--color-text-heading)" }} />
+        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
           {["Moderator", "Participant"].map(r => (
             <button key={r} className="pd-btn" onClick={() => setRole(r)}
-              style={{ flex: 1, fontSize: 11.5, fontWeight: 600, padding: "6px 4px", borderRadius: 7, cursor: "pointer", border: `1px solid ${role === r ? c.peridot : c.line}`, background: role === r ? c.peridot : c.surface, color: role === r ? "#fff" : c.inkSoft }}>{r}</button>
+              style={{ flex: 1, fontSize: "var(--font-size-sm)", fontWeight: 600, padding: "6px 4px", borderRadius: "var(--radius-base)", cursor: "pointer", border: `1px solid ${role === r ? "var(--color-red-700)" : "var(--color-stroke-base)"}`, background: role === r ? "var(--color-red-700)" : "var(--color-bg-white)", color: role === r ? "#fff" : "var(--color-text-body)" }}>{r}</button>
           ))}
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="pd-btn" onClick={() => onSave(label, role)} style={{ flex: 1, background: c.ink, color: "#fff", border: "none", borderRadius: 7, padding: "7px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F.ui }}>Save</button>
-          <button className="pd-btn" onClick={onCancel} style={{ background: "none", border: `1px solid ${c.line}`, borderRadius: 7, padding: "7px 10px", fontSize: 12, color: c.muted, cursor: "pointer", fontFamily: F.ui }}>Cancel</button>
+          <button className="pd-btn" onClick={() => onSave(label, role)} style={{ flex: 1, background: "var(--color-gray-900)", color: "#fff", border: "none", borderRadius: "var(--radius-base)", padding: "8px", fontSize: "var(--font-size-sm)", fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>Save</button>
+          <button className="pd-btn" onClick={onCancel} style={{ background: "none", border: "1px solid var(--color-stroke-base)", borderRadius: "var(--radius-base)", padding: "8px 10px", fontSize: "var(--font-size-sm)", color: "var(--color-text-body-subtle)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Cancel</button>
         </div>
       </div>
     );
   }
+
   return (
-    <button onClick={onEdit} className="pd-btn"
-      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: c.surface, border: `1px solid ${c.line}`, borderRadius: 10, padding: "9px 11px", marginBottom: 8, cursor: "pointer", fontFamily: F.ui }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = c.lineStrong}
-      onMouseLeave={e => e.currentTarget.style.borderColor = c.line}>
-      <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: "grid", placeItems: "center", fontSize: 12, fontWeight: 700, color: isMod ? c.peridotDeep : c.inkSoft, background: isMod ? c.peridotTint : c.sunken }}>
-        {sp.label.split(" ").map(w => w[0]).join("").slice(0, 2)}
-      </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sp.label}</span>
-        <span style={{ display: "block", fontSize: 11, color: c.muted }}>{sp.role}</span>
-      </span>
-      <span style={{ fontSize: 11, color: c.peridot, fontWeight: 600 }}>Edit</span>
-    </button>
+    <div className="pd-sidebar-card">
+      <div className="pd-sidebar-card-main">
+        <span className={`pd-sidebar-avatar ${isMod ? "pd-sidebar-avatar--mod" : "pd-sidebar-avatar--guest"}`}>{initials}</span>
+        <span className="pd-sidebar-body">
+          <span className="pd-sidebar-title">{sp.label}</span>
+          <span className="pd-sidebar-sub">{sp.role}</span>
+        </span>
+      </div>
+      <button type="button" className="pd-sidebar-edit" onClick={onEdit}>Edit</button>
+    </div>
   );
 }
 
-function SummaryRow({ color, icon, title, detail, action, onAction, flag }) {
+function SummaryRow({ icon, title, detail, action, onAction }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 10, background: c.surface, border: `1px solid ${c.line}` }}>
-      <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", color, background: color + "18" }}>{icon}</span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 600 }}>{title}</span>
-        <span style={{ display: "block", fontSize: 11, color: flag ? c.amber : c.muted, fontWeight: flag ? 600 : 400 }}>{flag || detail}</span>
-      </span>
-      {action && <button className="pd-btn" onClick={onAction} style={{ fontSize: 11, fontWeight: 600, color: c.inkSoft, background: c.sunken, border: "none", borderRadius: 6, padding: "5px 9px", cursor: "pointer", fontFamily: F.ui, whiteSpace: "nowrap" }}>{action}</button>}
+    <div className="pd-sidebar-card">
+      <div className="pd-sidebar-card-main">
+        <span className="pd-sidebar-avatar pd-sidebar-avatar--icon">{icon}</span>
+        <span className="pd-sidebar-body">
+          <span className="pd-sidebar-title">{title}</span>
+          <span className="pd-sidebar-sub">{detail}</span>
+        </span>
+      </div>
+      {action && <button type="button" className="pd-sidebar-chip" onClick={onAction}>{action}</button>}
     </div>
   );
 }
 
 function DictRow({ d, on, toggle }) {
   return (
-    <button onClick={toggle} className="pd-btn"
-      style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: 9, cursor: "pointer", fontFamily: F.ui, background: on ? c.surface : c.sunken, border: `1px solid ${c.line}`, opacity: on ? 1 : 0.65 }}>
-      <Switch on={on} color="#2563EB" />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: c.ink }}>{d.term}</span>
-        <span style={{ display: "block", fontSize: 11, color: c.muted, fontFamily: F.mono }}>heard "{d.heard}"</span>
-      </span>
+    <button type="button" onClick={toggle} className="pd-sidebar-toggle-row pd-btn">
+      <div className="pd-sidebar-card-main">
+        <Switch on={on} />
+        <span className="pd-sidebar-body">
+          <span className="pd-sidebar-title pd-sidebar-title--bold">{d.term}</span>
+          <span className="pd-sidebar-sub">heard &ldquo;{d.heard}&rdquo;</span>
+        </span>
+      </div>
     </button>
   );
 }
@@ -608,12 +849,7 @@ function SourceVideo({ playing, t, toggle, name, compact }) {
         </button>
       </div>
       <div style={{ padding: "10px 11px 0" }}>
-        <div style={{ display: "flex", background: c.sunken, borderRadius: 8, padding: 3, gap: 2 }}>
-          {[["source", "What you see"], ["shareable", "Shareable export"]].map(([v, l]) => (
-            <button key={v} onClick={() => setMode(v)} className="pd-btn"
-              style={{ flex: 1, fontSize: 11.5, fontWeight: 600, padding: "5px 4px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: F.ui, background: mode === v ? c.surface : "transparent", color: mode === v ? c.ink : c.muted, boxShadow: mode === v ? "0 1px 2px rgba(28,33,27,.1)" : "none" }}>{l}</button>
-          ))}
-        </div>
+        <Segmented fill value={mode} onChange={setMode} options={[["source", "What you see"], ["shareable", "Shareable export"]]} />
       </div>
       <div style={{ padding: 11 }}>
         <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "16 / 9", background: "#1a1a1d" }}>
@@ -737,9 +973,17 @@ function Sent({ counts, onClose }) {
 }
 
 function Switch({ on, color }) {
+  const brand = color || "var(--color-bg-brand)";
+  if (!color) {
+    return (
+      <span className={`pd-switch ${on ? "pd-switch--on" : "pd-switch--off"}`} aria-hidden>
+        <span className="pd-switch-knob" />
+      </span>
+    );
+  }
   return (
-    <span style={{ width: 30, height: 18, borderRadius: 99, flexShrink: 0, background: on ? color : c.lineStrong, position: "relative", transition: "background .15s ease" }}>
-      <span style={{ position: "absolute", top: 2, left: on ? 14 : 2, width: 14, height: 14, borderRadius: 99, background: "#fff", transition: "left .15s ease", boxShadow: "0 1px 2px rgba(0,0,0,.2)" }} />
+    <span style={{ width: 36, height: 20, borderRadius: 9999, flexShrink: 0, background: on ? brand : "var(--color-gray-300)", position: "relative", transition: "background .15s ease" }}>
+      <span style={{ position: "absolute", top: 2, left: on ? 18 : 2, width: 16, height: 16, borderRadius: 9999, background: "#fff", transition: "left .15s ease", boxShadow: "0 1px 2px rgba(0,0,0,.2)" }} />
     </span>
   );
 }
