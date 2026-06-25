@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, Check, ChevronRight, ChevronDown, ShieldAlert,
-  ShieldCheck, Lock, BookText, Eraser, Menu, X, AudioLines, IdCard,
+  ShieldCheck, Lock, BookText, Eraser, Menu, X,
 } from "lucide-react";
 
 const c = {
@@ -201,12 +201,12 @@ export default function App() {
           <section className="pd-sidebar-section">
             <RailHead>Ready to analyze</RailHead>
             <div className="pd-sidebar-list">
-              <SummaryRow icon={<AudioLines size={15} strokeWidth={2} />} title="Filler words"
+              <SummaryRow title="Filler words"
                 detail={`${counts.fill} of ${totalFill} removed`}
                 action={counts.fill === totalFill ? "Keep all" : "Remove all"} onAction={() => setAllFill(counts.fill !== totalFill)} />
-              <SummaryRow icon={<IdCard size={15} strokeWidth={2} />} title="Personal info"
+              <SummaryRow title="Personal info"
                 detail={`${counts.pii} of ${totalPii} redacted`} />
-              <SummaryRow icon={<Eraser size={15} strokeWidth={2} />} title="Corrections"
+              <SummaryRow title="Corrections"
                 detail={`${counts.term} of ${totalTerm} applied`} />
             </div>
           </section>
@@ -455,7 +455,7 @@ function GlobalStyle() {
       }
       .pd-sidebar-card {
         display: flex; align-items: center; justify-content: space-between;
-        min-height: 68px; padding: var(--spacing-s);
+        padding: 11px var(--spacing-s);
         background: var(--color-bg-white);
         border: var(--border-width) solid var(--color-stroke-medium);
         border-radius: var(--radius-base);
@@ -514,7 +514,7 @@ function GlobalStyle() {
       .pd-sidebar-toggle-row {
         display: flex; align-items: center; width: 100%; text-align: left; cursor: pointer;
         font-family: var(--font-sans);
-        min-height: 68px; padding: var(--spacing-s);
+        padding: 11px var(--spacing-s);
         background: var(--color-bg-white);
         border: var(--border-width) solid var(--color-stroke-medium);
         border-radius: var(--radius-base);
@@ -543,7 +543,29 @@ function GlobalStyle() {
         border: var(--border-width) solid var(--color-red-200);
         border-radius: var(--radius-base); padding: var(--spacing-s);
         margin-bottom: var(--spacing-xs); background: var(--color-red-50);
+        display: flex; flex-direction: column; gap: var(--spacing-xs);
       }
+      .pd-sidebar-edit-input {
+        width: 100%; border: var(--border-width) solid var(--color-gray-300);
+        border-radius: var(--radius-base); padding: 8px 10px;
+        font-size: var(--font-size-sm); outline: none;
+        color: var(--color-text-heading); font-family: var(--font-sans);
+      }
+      .pd-sidebar-edit-actions {
+        display: flex; align-items: center; gap: var(--spacing-xs);
+      }
+      .pd-sidebar-edit-save {
+        flex: 1; background: var(--color-gray-900); color: var(--color-white);
+        border: none; border-radius: var(--radius-base); padding: 8px;
+        font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+        cursor: pointer; font-family: var(--font-sans);
+      }
+      .pd-sidebar-edit-cancel {
+        flex-shrink: 0; background: none; border: none; padding: 8px 4px;
+        font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+        color: var(--color-text-body-subtle); cursor: pointer; font-family: var(--font-sans);
+      }
+      .pd-sidebar-edit-cancel:hover { color: var(--color-text-body); text-decoration: underline; }
 
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
@@ -761,17 +783,11 @@ function SpeakerRow({ sp, editing, onEdit, onSave, onCancel }) {
   if (editing) {
     return (
       <div className="pd-sidebar-edit-form">
-        <input className="pd-input" autoFocus value={label} onChange={e => setLabel(e.target.value)}
-          style={{ width: "100%", border: `1px solid var(--color-gray-300)`, borderRadius: "var(--radius-base)", padding: "8px 10px", fontSize: "var(--font-size-sm)", marginBottom: 8, outline: "none", color: "var(--color-text-heading)" }} />
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-          {["Moderator", "Participant"].map(r => (
-            <button key={r} className="pd-btn" onClick={() => setRole(r)}
-              style={{ flex: 1, fontSize: "var(--font-size-sm)", fontWeight: 600, padding: "6px 4px", borderRadius: "var(--radius-base)", cursor: "pointer", border: `1px solid ${role === r ? "var(--color-red-700)" : "var(--color-stroke-base)"}`, background: role === r ? "var(--color-red-700)" : "var(--color-bg-white)", color: role === r ? "#fff" : "var(--color-text-body)" }}>{r}</button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button className="pd-btn" onClick={() => onSave(label, role)} style={{ flex: 1, background: "var(--color-gray-900)", color: "#fff", border: "none", borderRadius: "var(--radius-base)", padding: "8px", fontSize: "var(--font-size-sm)", fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>Save</button>
-          <button className="pd-btn" onClick={onCancel} style={{ background: "none", border: "1px solid var(--color-stroke-base)", borderRadius: "var(--radius-base)", padding: "8px 10px", fontSize: "var(--font-size-sm)", color: "var(--color-text-body-subtle)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Cancel</button>
+        <input className="pd-input pd-sidebar-edit-input" autoFocus value={label} onChange={e => setLabel(e.target.value)} />
+        <Segmented fill value={role} onChange={setRole} options={[["Moderator", "Moderator"], ["Participant", "Participant"]]} />
+        <div className="pd-sidebar-edit-actions">
+          <button type="button" className="pd-btn pd-sidebar-edit-save" onClick={() => onSave(label, role)}>Save</button>
+          <button type="button" className="pd-btn pd-sidebar-edit-cancel" onClick={onCancel}>Cancel</button>
         </div>
       </div>
     );
@@ -791,11 +807,10 @@ function SpeakerRow({ sp, editing, onEdit, onSave, onCancel }) {
   );
 }
 
-function SummaryRow({ icon, title, detail, action, onAction }) {
+function SummaryRow({ title, detail, action, onAction }) {
   return (
     <div className="pd-sidebar-card">
       <div className="pd-sidebar-card-main">
-        <span className="pd-sidebar-avatar pd-sidebar-avatar--icon">{icon}</span>
         <span className="pd-sidebar-body">
           <span className="pd-sidebar-title">{title}</span>
           <span className="pd-sidebar-sub">{detail}</span>
