@@ -386,10 +386,19 @@ function GlobalStyle() {
         color: var(--color-text-body);
       }
       .pd-turns { display: flex; flex-direction: column; gap: var(--spacing-s); }
-      .pd-turn { display: flex; gap: var(--spacing-l); align-items: flex-start; }
+      .pd-turn {
+        display: flex; gap: var(--spacing-l); align-items: flex-start;
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xs) var(--spacing-s);
+        transition: background .25s ease;
+        cursor: pointer;
+      }
+      .pd-turn--active { background: var(--color-turn-active-bg); }
+      .pd-turn-time { cursor: pointer; }
+      .pd-turn-text { cursor: text; }
       .pd-turn-time {
         flex-shrink: 0; background: none; border: none; cursor: pointer;
-        padding: var(--spacing-s) 0; margin: 0;
+        padding: var(--spacing-xs) 0; margin: 0;
         font-family: var(--font-sans); font-size: var(--font-size-base);
         font-weight: var(--font-weight-normal); line-height: var(--line-height-xs);
         color: var(--color-text-body);
@@ -636,8 +645,12 @@ function Segmented({ value, onChange, options, fill }) {
 
 function Turn({ turn, active, speaker, view, fillers, pii, terms, onSeek, onItem }) {
   const isMod = speaker.role === "Moderator";
+  const seekUnlessText = (e) => {
+    if (e.target.closest(".pd-turn-time, .pd-turn-text")) return;
+    onSeek();
+  };
   return (
-    <div className="pd-turn">
+    <div className={`pd-turn${active ? " pd-turn--active" : ""}`} onClick={seekUnlessText}>
       <button type="button" onClick={onSeek} className={`pd-btn pd-turn-time${active ? " pd-turn-time--active" : ""}`} title="Play from here">
         {fmt(turn.start)}
       </button>
@@ -836,7 +849,7 @@ function DictRow({ d, on, toggle }) {
 }
 
 function SourceVideo({ playing, t, toggle, name, compact }) {
-  const [collapsed, setCollapsed] = useState(compact);
+  const [collapsed, setCollapsed] = useState(true);
   useEffect(() => { if (compact) setCollapsed(true); }, [compact]);
   const [mode, setMode] = useState("source");
   const share = mode === "shareable";

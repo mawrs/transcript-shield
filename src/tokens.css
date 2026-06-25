@@ -134,6 +134,7 @@
   --color-bg-brand: var(--color-primary-700);
   --color-bg-danger: var(--color-red-700);
   --color-bg-danger-soft: var(--color-red-50);
+  --color-turn-active-bg: #fefafa;
   --color-bg-success-soft: var(--color-green-50);
   --color-border-success-subtle: #a4f4cf;
   --color-text-success-strong: #004f3b;
