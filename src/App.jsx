@@ -95,6 +95,70 @@ const WAVE = Array.from({ length: 72 }, (_, i) => {
   return 0.22 + Math.abs(a) * 0.72;
 });
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const DOC_TITLE = "Clearwater - Fintech onboarding research";
+const EXPORT_DESTINATIONS = [
+  { id: "claude", name: "Claude", icon: "/claude.svg" },
+  { id: "dovetail", name: "Dovetail", icon: "/dovetail.svg" },
+  { id: "notion", name: "Notion", icon: "/notion.svg" },
+  { id: "airtable", name: "Airtable", icon: "/airtable.svg" },
+  { id: "sheets", name: "Sheets", icon: "/sheets.svg" },
+];
+
+function resolveSeg(s, fillers, pii, terms) {
+  if (s.t === "txt") return s.v;
+  if (s.t === "fill") return fillers[s.id] ? "" : s.v;
+  if (s.t === "pii") return pii[s.id] ? `[${PII_LABEL[s.kind].toLowerCase()}]` : s.v;
+  if (s.t === "term") return terms[s.id] ? s.term : s.heard;
+  return "";
+}
+
+function turnText(turn, fillers, pii, terms) {
+  return turn.segs.map(s => resolveSeg(s, fillers, pii, terms)).join("").replace(/\s+/g, " ").trim();
+}
+
+function srtTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.round((s % 1) * 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
+function buildExportContent(format, speakers, fillers, pii, terms) {
+  if (format === "srt") {
+    return TURNS.map((turn, i) => {
+      const end = i < TURNS.length - 1 ? TURNS[i + 1].start : DURATION;
+      const speaker = speakers[turn.sp];
+      const text = `${speaker.label}: ${turnText(turn, fillers, pii, terms)}`;
+      return `${i + 1}\n${srtTime(turn.start)} --> ${srtTime(end)}\n${text}\n`;
+    }).join("\n");
+  }
+  const header = `${DOC_TITLE}\nRecorded today · ${fmt(DURATION)} · Auto-transcribed\n\n`;
+  const body = TURNS.map(turn => {
+    const speaker = speakers[turn.sp];
+    const text = turnText(turn, fillers, pii, terms);
+    return `[${fmt(turn.start)}] ${speaker.label} (${speaker.role})\n${text}`;
+  }).join("\n\n");
+  return header + body;
+}
+
+function downloadExport(format, speakers, fillers, pii, terms) {
+  const content = buildExportContent(format, speakers, fillers, pii, terms);
+  const base = DOC_TITLE.replace(/\s+/g, "-").toLowerCase();
+  const specs = {
+    docx: { ext: "doc", mime: "application/msword", body: `<html><head><meta charset="utf-8"></head><body><pre>${content.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre></body></html>` },
+    txt: { ext: "txt", mime: "text/plain;charset=utf-8", body: content },
+    srt: { ext: "srt", mime: "text/plain;charset=utf-8", body: content },
+  };
+  const { ext, mime, body } = specs[format];
+  const blob = new Blob([format === "docx" ? "\ufeff" + body : body], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${base}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function App() {
   const [view, setView] = useState("cleaned");
@@ -111,7 +175,7 @@ export default function App() {
     TURNS.flatMap(t => t.segs).filter(s => s.t === "term").map(s => [s.id, true])));
   const [dict, setDict] = useState(() => Object.fromEntries(DICT_TERMS.map(d => [d.term, true])));
   const [pop, setPop] = useState(null);
-  const [sent, setSent] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const appRef = useRef(null);
   const [compact, setCompact] = useState(false);
@@ -146,7 +210,7 @@ export default function App() {
 
   const closePop = useCallback(() => setPop(null), []);
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") { closePop(); setEditingSp(null); } };
+    const onKey = (e) => { if (e.key === "Escape") { closePop(); setEditingSp(null); setExportOpen(false); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [closePop]);
@@ -176,8 +240,8 @@ export default function App() {
         </div>
         <div className="pd-header-actions">
           <Segmented value={view} onChange={setView} options={[["cleaned", "Cleaned"], ["original", "Original"]]} />
-          <button type="button" className="pd-btn pd-header-cta" onClick={() => setSent(true)}>
-            <span className="pd-cta-label">Send to analysis</span>
+          <button type="button" className="pd-btn pd-header-cta" onClick={() => setExportOpen(true)}>
+            <span className="pd-cta-label">Export transcript</span>
             <ChevronRight size={16} strokeWidth={2.25} />
           </button>
         </div>
@@ -268,7 +332,10 @@ export default function App() {
           fillers={fillers} pii={pii} terms={terms} dict={dict}
           setFillers={setFillers} setPii={setPii} setTerms={setTerms} setDict={setDict} />
       )}
-      {sent && <Sent counts={counts} onClose={() => setSent(false)} />}
+      {exportOpen && (
+        <ExportModal counts={counts} speakers={speakers} fillers={fillers} pii={pii} terms={terms}
+          onClose={() => setExportOpen(false)} />
+      )}
     </div>
   );
 }
@@ -345,6 +412,97 @@ function GlobalStyle() {
       }
       .pd-header-cta:hover { background: var(--color-red-800); }
       .pd-header-cta svg { flex-shrink: 0; }
+
+      .pd-export-overlay {
+        position: fixed; inset: 0; z-index: 60;
+        background: rgba(16, 24, 40, 0.36);
+        display: grid; place-items: center; padding: 20px;
+      }
+      .pd-export-card {
+        width: 400px; max-width: 100%;
+        background: var(--color-bg-white);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 24px 60px rgba(16, 24, 40, 0.22);
+        animation: pdToast .2s ease both;
+        overflow: hidden;
+      }
+      .pd-export-head {
+        display: flex; align-items: flex-start; gap: var(--spacing-s);
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-s);
+        position: relative;
+      }
+      .pd-export-icon {
+        width: 40px; height: 40px; flex-shrink: 0;
+        border-radius: var(--radius-full);
+        background: var(--color-bg-danger-soft);
+        display: grid; place-items: center; color: var(--color-bg-danger);
+      }
+      .pd-export-title {
+        margin: 0; font-family: var(--font-sans);
+        font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);
+        color: var(--color-text-heading); line-height: var(--line-height-sm);
+      }
+      .pd-export-sub {
+        margin: 2px 0 0; font-family: var(--font-sans);
+        font-size: var(--font-size-sm); color: var(--color-text-body-subtle);
+        line-height: var(--line-height-xs);
+      }
+      .pd-export-close {
+        position: absolute; top: var(--spacing-s); right: var(--spacing-s);
+        width: 32px; height: 32px; border: none; background: transparent;
+        border-radius: var(--radius-base); cursor: pointer;
+        display: grid; place-items: center; color: var(--color-text-body-subtle);
+      }
+      .pd-export-close:hover { background: var(--color-bg-light); color: var(--color-text-heading); }
+      .pd-export-body { padding: 0 var(--spacing-md) var(--spacing-md); }
+      .pd-export-panel {
+        border: var(--border-width) solid var(--color-stroke-base);
+        border-radius: var(--radius-base); overflow: hidden;
+      }
+      .pd-export-section + .pd-export-section { border-top: var(--border-width) solid var(--color-stroke-base); }
+      .pd-export-section-label {
+        padding: 10px var(--spacing-s);
+        background: var(--color-bg-soft);
+        font-family: var(--font-sans); font-size: 11px; font-weight: var(--font-weight-semibold);
+        letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--color-text-body-subtle); line-height: 1;
+      }
+      .pd-export-formats {
+        display: flex; gap: var(--spacing-xs); padding: var(--spacing-s);
+      }
+      .pd-export-format {
+        flex: 1; border-radius: var(--radius-base);
+        padding: 10px var(--spacing-xs); cursor: pointer;
+        font-family: var(--font-sans); font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium); line-height: 1;
+        border: var(--border-width) solid var(--color-stroke-base);
+        background: var(--color-bg-white); color: var(--color-text-heading);
+      }
+      .pd-export-format:hover { background: var(--color-bg-soft); }
+      .pd-export-format--active {
+        background: var(--color-gray-800); color: var(--color-text-white);
+        border-color: var(--color-gray-800);
+      }
+      .pd-export-format--active:hover { background: var(--color-gray-900); }
+      .pd-export-dest {
+        display: flex; align-items: center; gap: var(--spacing-s);
+        width: 100%; padding: 12px var(--spacing-s);
+        border: none; background: transparent; cursor: pointer;
+        font-family: var(--font-sans); text-align: left;
+      }
+      .pd-export-dest + .pd-export-dest { border-top: var(--border-width) solid var(--color-stroke-base); }
+      .pd-export-dest:hover { background: var(--color-bg-soft); }
+      .pd-export-dest-icon {
+        width: 28px; height: 28px; flex-shrink: 0;
+        border-radius: 6px; overflow: hidden;
+        display: grid; place-items: center;
+      }
+      .pd-export-dest-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
+      .pd-export-dest-name {
+        flex: 1; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+        color: var(--color-text-heading); line-height: var(--line-height-xs);
+      }
+      .pd-export-dest svg { flex-shrink: 0; color: var(--color-text-body-subtle); }
 
       .pd-main { flex: 1; min-height: 0; overflow-y: auto; background: var(--color-bg-soft); }
       .pd-main-inner {
@@ -623,9 +781,7 @@ function GlobalStyle() {
         }
         .pd-video-collapsed-label { display: none; }
         .pd-popover { width: min(280px, calc(100cqw - 28px)) !important; max-width: calc(100cqw - 28px); }
-        .pd-sent-card { width: min(380px, calc(100cqw - 32px)) !important; padding: 22px 18px !important; }
-        .pd-sent-stats { gap: 6px !important; }
-        .pd-sent-stat { padding: 10px 4px !important; }
+        .pd-export-card { width: min(400px, calc(100cqw - 32px)) !important; }
       }
 
     `}</style>
@@ -973,28 +1129,70 @@ function AudioBar({ playing, toggle, t, onScrub }) {
   );
 }
 
-function Sent({ counts, onClose }) {
+function ExportModal({ counts, speakers, fillers, pii, terms, onClose }) {
+  const [format, setFormat] = useState("docx");
+  const [sentTo, setSentTo] = useState(null);
+
+  const handleDownload = (fmt) => {
+    setFormat(fmt);
+    downloadExport(fmt, speakers, fillers, pii, terms);
+  };
+
+  const handleSend = (dest) => {
+    downloadExport(format, speakers, fillers, pii, terms);
+    setSentTo(dest.id);
+    setTimeout(() => setSentTo(null), 1800);
+  };
+
+  const summary = `${counts.fill} fillers trimmed · ${counts.pii} redacted · ${counts.term} fixes applied`;
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(28,33,27,.34)", display: "grid", placeItems: "center", padding: 20 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="pd-sent-card" style={{ width: 380, background: c.surface, borderRadius: 18, padding: 28, textAlign: "center", boxShadow: "0 24px 60px rgba(28,33,27,.3)", animation: "pdToast .2s ease both" }}>
-        <div style={{ width: 50, height: 50, borderRadius: 999, background: c.peridotTint, display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
-          <Check size={24} color={c.peridotDeep} strokeWidth={2.6} />
+    <div className="pd-export-overlay" onClick={onClose}>
+      <div className="pd-export-card" onClick={e => e.stopPropagation()} role="dialog" aria-labelledby="export-title">
+        <div className="pd-export-head">
+          <span className="pd-export-icon" aria-hidden>
+            <Check size={20} strokeWidth={2.5} />
+          </span>
+          <div>
+            <h2 id="export-title" className="pd-export-title">Transcript is clean</h2>
+            <p className="pd-export-sub">{summary}</p>
+          </div>
+          <button type="button" className="pd-btn pd-export-close" onClick={onClose} aria-label="Close">
+            <X size={18} strokeWidth={2} />
+          </button>
         </div>
-        <h2 style={{ fontFamily: F.read, fontSize: 23, fontWeight: 500, margin: "0 0 7px" }}>Transcript is clean</h2>
-        <p style={{ fontSize: 13.5, color: c.inkSoft, lineHeight: 1.55, margin: "0 0 20px" }}>
-          Redactions cover the transcript, the insights, and anything you export, while the source recording stays whole so every quote traces back to what was really said.
-        </p>
-        <div className="pd-sent-stats" style={{ display: "flex", gap: 8, marginBottom: 22 }}>
-          {[[`${counts.fill}`, "fillers trimmed"], [`${counts.pii}`, "items redacted"], [`${counts.term}`, "fixes applied"]].map(([n, l]) => (
-            <div key={l} className="pd-sent-stat" style={{ flex: 1, background: c.sunken, borderRadius: 11, padding: "12px 6px" }}>
-              <div style={{ fontFamily: F.mono, fontSize: 20, fontWeight: 500, color: c.peridotDeep }}>{n}</div>
-              <div style={{ fontSize: 10.5, color: c.muted, marginTop: 2 }}>{l}</div>
-            </div>
-          ))}
+        <div className="pd-export-body">
+          <div className="pd-export-panel">
+            <section className="pd-export-section">
+              <div className="pd-export-section-label">Download</div>
+              <div className="pd-export-formats" role="group" aria-label="Download format">
+                {[["docx", ".DOCX"], ["txt", ".TXT"], ["srt", ".SRT"]].map(([id, label]) => (
+                  <button key={id} type="button"
+                    className={`pd-btn pd-export-format${format === id ? " pd-export-format--active" : ""}`}
+                    aria-pressed={format === id} onClick={() => handleDownload(id)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="pd-export-section">
+              <div className="pd-export-section-label">Send to</div>
+              {EXPORT_DESTINATIONS.map(dest => (
+                <button key={dest.id} type="button" className="pd-btn pd-export-dest" onClick={() => handleSend(dest)}>
+                  <span className="pd-export-dest-icon">
+                    <img src={dest.icon} alt="" />
+                  </span>
+                  <span className="pd-export-dest-name">
+                    {sentTo === dest.id ? `Sent to ${dest.name}` : dest.name}
+                  </span>
+                  {sentTo === dest.id
+                    ? <Check size={16} strokeWidth={2.25} color="var(--color-green-700)" />
+                    : <ChevronRight size={16} strokeWidth={2} />}
+                </button>
+              ))}
+            </section>
+          </div>
         </div>
-        <button onClick={onClose} className="pd-btn" style={{ width: "100%", background: c.ink, color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontFamily: F.ui, fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}>
-          Back to transcript
-        </button>
       </div>
     </div>
   );
