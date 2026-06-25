@@ -349,7 +349,7 @@ function GlobalStyle() {
       .pd-main { flex: 1; min-height: 0; overflow-y: auto; background: var(--color-bg-soft); }
       .pd-main-inner {
         display: flex; flex-direction: column; gap: var(--spacing-l);
-        padding: var(--spacing-xl) 96px;
+        padding: var(--spacing-xl) var(--spacing-xxl);
       }
       .pd-doc-head {
         display: flex; align-items: flex-start; justify-content: space-between;
@@ -487,7 +487,7 @@ function GlobalStyle() {
         display: flex; flex-direction: column; gap: var(--spacing-xxs);
       }
       .pd-sidebar-title {
-        display: block; font-size: var(--font-size-base); font-weight: var(--font-weight-medium);
+        display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
         color: var(--color-text-heading); line-height: var(--line-height-xs);
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
